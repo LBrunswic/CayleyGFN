@@ -1,0 +1,6 @@
+*.log
+*.pyc
+gpu_stat
+test/*
+logs/*
+results/*
