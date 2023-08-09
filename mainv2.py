@@ -10,6 +10,7 @@ MEMORY_LIMIT = 2**generate_argparser().parse_args().MEMORY_LIMIT
 if GPU>=0:
   try:
     gpus = tf.config.list_physical_devices('GPU')
+    print(gpus)
     tf.config.set_visible_devices(gpus[GPU], 'GPU')
     tf.config.experimental.set_virtual_device_configuration(gpus[GPU], [
         tf.config.experimental.VirtualDeviceConfiguration(memory_limit=MEMORY_LIMIT)])
@@ -18,6 +19,7 @@ if GPU>=0:
   except Exception as e:
     tf.config.set_visible_devices([], 'GPU')
     print(e)
+    raise
 else:
     tf.config.set_visible_devices([], 'GPU')
 import platform
@@ -28,9 +30,6 @@ from GFlowBase.kernel import dense_gen
 from GFlowBase.GFlowCayley import GFlowCayleyLinear
 from GFlowBase.losses import *
 from GFlowBase.rewards import R_one, R_first_one,H_first_one,Reward,R_zero,R_rubick,H_rubick,Manhattan
-from Graphs.SmallGraphs import SmallGraph
-from GFlowBase.GFlowSmall import SmallGFlow
-from Graphs.SmallGraphs import Symmetric as SmallSymmetric
 from metrics import FollowInitLoss, plot,ReplayBuffer
 from metrics import represent_symmetric_R_first_one
 from datetime import datetime

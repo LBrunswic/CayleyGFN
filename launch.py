@@ -9,7 +9,7 @@ from utils import extract
 import logging
 
 
-GPUS = [1,2,3,4,5,6,7]
+GPUS = [0]
 
 
 logger = logging.getLogger('launcher')
@@ -85,7 +85,7 @@ for param in TODO:
         continue
     print(param)
     logger.info('Not done: %s' % param)
-    sleep(10)
+    sleep(4)
     done = False
     while not done:
         sleep(1)
@@ -94,6 +94,7 @@ for param in TODO:
         for i in range(len(GPUS)):
             gpu = GPUS[i]
             used, total = gpu_usage[gpu]
+            print(used,total,2**param['memory_limit']+2**10)
             if total-used>2**param['memory_limit']+2**10:
                 param['gpu'] = gpu
                 EXEC_NUMB= find_EXEC_NUMB(param['size'])

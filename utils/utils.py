@@ -43,9 +43,15 @@ def get_gpu_stat(file_name='gpu_stat'):
         A = f.readlines()
     return A
 def gpu_memory():
-    A = get_gpu_stat()
-    B = [x.split('|')[5].replace(' ','').replace('MiB','').split('/') for x in  ''.join(A).split('Tesla V100-PCIE')[1:]]
-    return [(int(x),int(y))  for x,y in B]
+    while True:
+        A = get_gpu_stat()
+        B = [x.replace(' ','').replace('MiB','').split('/') for x in  ''.join(A).split('|') if 'MiB' in x]
+        try:
+            res = [(int(x),int(y))  for x,y in B[:1]]
+            return res
+        except:
+            print (A)
+
 
 
 def extract(TESTS_FOLDER = 'tests',remove=False,load_log = False):
@@ -116,4 +122,3 @@ def remove(L,TESTS_FOLDER = 'tests'):
     A = extract(TESTS_FOLDER = 'tests')
     for x in L:
         shutil.rmtree(A[x]['folder_path'])
-
