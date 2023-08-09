@@ -1,6 +1,6 @@
 *.log
 *.pyc
 gpu_stat
-test/*
+tests/*
 logs/*
 results/*
