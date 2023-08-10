@@ -68,7 +68,7 @@ def score(L,metric=-1,val=5,interval=300,A=None):
     return res
 
 
-def show(VARIABLE={},threshold=[0,5,10,20,30,40,60],A=None,plot=True,bbox_to_anchor=(0,0),interval=50,ER='spot',Nepoch=20000,averaging_width=100):
+def show(VARIABLE={},threshold=[0,5,10,20,30,40,60],A=None,plot=True,bbox_to_anchor=(0,0),interval=50,ER='spot',Nepoch=20000,averaging_width=100,target_init=1.0):
     if A is None:
         A = extract()
         A = {x: A[x] for x in A if A[x]['done']}
@@ -113,4 +113,4 @@ def show(VARIABLE={},threshold=[0,5,10,20,30,40,60],A=None,plot=True,bbox_to_anc
     plt.savefig(os.path.join('results',name+'_a.png'), bbox_inches="tight")
     plt.clf()
     sleep(1)
-    aux(C,name=name+'_b',Nepoch=Nepoch,ER=ER,averaging_width=averaging_width)
+    aux(C,name=name+'_b',Nepoch=Nepoch,ER=ER,averaging_width=averaging_width,target_init=target_init)

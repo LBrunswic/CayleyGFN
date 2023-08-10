@@ -102,7 +102,7 @@ G = Symmetric(
     k=1,
     # logger=logger
 )
-
+logger.info(str(G.initial))
 FlowEstimator = [
     dense_gen,
     # linear,
@@ -145,8 +145,6 @@ param = [eval(x) for x in REWARD.split(',')[1:]]
 
 flow = GFlowCayleyLinear(
     graph=G,
-    # reward=R_one,
-    # reward=R_main,
     reward=Reward(
         reward_fn=Rewards[key](SIZE,*param),
         heuristic_fn=heuristic_fn,
@@ -156,7 +154,6 @@ flow = GFlowCayleyLinear(
     FlowEstimatorGen=(FlowEstimator[0], FlowEstimator_options),
     length_cutoff_factor=length_cutoff_factor,
 )
-
 
 train_batch_size = BATCH_SIZE
 X = tf.zeros((train_batch_size,(1+G.nactions),flow.embedding_dim))
@@ -204,7 +201,7 @@ Scheduler = [
 loss_fn_dic = {
     'powB': lambda alphaA,alphaB,betaB:MeanABError(A=Apower(alphaA),B=Bpower(alphaB,betaB)),
     'pow': lambda alphaA:MeanABError(A=Apower(alphaA)),
-    'Bengio':lambda alpha:divergence(),
+    'Bengio':lambda :divergence(),
 }
 key = LOSS.split(',')[0]
 param = [eval(x) for x in LOSS.split(',')[1:]]

@@ -43,7 +43,7 @@ def plot(to_plot = [] ,in_folder='tests', dest_folder='results/',file_name='Erro
         if i == 3:
             all[i] = np.clip(np.abs(all[i]-target_init)/target_init,1e-8,10) #np.abs(all[i]-target_init)/target_init
         if i in [0,1,2,3]:
-            all[i] = np.log(1e-10+all[i])/np.log(10)
+            all[i] = np.log10(1e-10+all[i])
 
 
     x = np.arange(Nepoch)

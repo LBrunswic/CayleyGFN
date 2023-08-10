@@ -32,9 +32,7 @@ class CayleyGraphLinearEmb():
 
 def Symmetric(n,Gen='trans_cycle_a', inverse = False,dtype='float32',k=1):
     def aux(sigma):
-        if inverse:
-            return np.unique(sigma,return_index=True)[1]
-        return sigma
+        return np.unique(sigma,return_index=True)[1]
     def permutation_matrix(sigma):
         n = len(sigma)
         P = np.zeros((n, n))
@@ -57,7 +55,8 @@ def Symmetric(n,Gen='trans_cycle_a', inverse = False,dtype='float32',k=1):
             [1,0]+list(range(2,n)),
             list(range(1,n))+[0],
         ]
-        generators.append(aux(generators[1]))
+        if inverse:
+            generators.append(aux(generators[1]))
         diameter = n
     elif Gen == 'all':
         generators = list(itertools.permutations(list(range(n))))
@@ -135,6 +134,3 @@ def RubicksCube(width=3,Gen='default', inverse = False,dtype='float32'):
 #                 node_unexplored.append(sa)
 #             dot.edge(Sa,sa)
 #     return dot,node_explored
-
-
-
