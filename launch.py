@@ -85,10 +85,10 @@ for param in TODO:
         continue
     print(param)
     logger.info('Not done: %s' % param)
-    sleep(4)
+    sleep(10)
     done = False
     while not done:
-        sleep(1)
+        sleep(2)
         logger.handlers[0].flush()
         gpu_usage = utils.gpu_memory()
         for i in range(len(GPUS)):

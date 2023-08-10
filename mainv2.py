@@ -86,13 +86,13 @@ with open(PID_PATH,'w') as f:
     f.write(str(os.getpid()))
 
 STOP = False
-def receive_signal(signum, stack):
-    global STOP
-    STOP = True
-try:
-    signal.signal(signal.SIGUSR1, receive_signal)
-except:
-    pass
+# def receive_signal(signum, stack):
+#     global STOP
+#     STOP = True
+# try:
+#     signal.signal(signal.SIGUSR1, receive_signal)
+# except:
+#     pass
 
 
 G = Symmetric(
