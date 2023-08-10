@@ -198,7 +198,7 @@ Scheduler = [
     cosine_scheduler(3000),
     cosine_scheduler(5000),
     cosine_scheduler(2000),
-    cosine_scheduler(1000),
+    cosine_scheduler(200),
 ]
 
 loss_fn_dic = {
@@ -216,7 +216,9 @@ flow.compile(
 cp_callback = tf.keras.callbacks.ModelCheckpoint(
     filepath=os.path.join(folder,'model.ckpt'),
     verbose=1,
-    save_weights_only=True)
+    save_weights_only=True,
+    save_freq=STEP_PER_EPOCH
+    )
 
 
 Replay = ReplayBuffer(
@@ -247,7 +249,7 @@ for i in range(start_epoch,EPOCHS):
         mu_initial_reward,
         initial_epoch=i*STEP_PER_EPOCH,
         epochs=i*STEP_PER_EPOCH+STEP_PER_EPOCH,
-        verbose=2,
+        verbose=0,
         batch_size=dataset.shape[0],
         shuffle=False,
         callbacks=[
