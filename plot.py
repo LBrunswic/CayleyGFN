@@ -15,6 +15,8 @@ for x in A:
         A[x]['param']['reward'] = 'R_first_one'
     if 'load' not in A[x]['param']:
         A[x]['param']['load'] = 0
+    if 'initflow' not in A[x]['param']:
+        A[x]['param']['initflow'] = 1.
 print('There are %s finished experiments' % len(A))
 for key in A[K[0]]['param']:
     if key in ['folder','gpu']:

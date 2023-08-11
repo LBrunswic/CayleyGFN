@@ -62,6 +62,7 @@ REWARD = generate_argparser().parse_args().REWARD
 length_cutoff_factor = generate_argparser().parse_args().length_cutoff_factor
 EXPLORATION = generate_argparser().parse_args().EXPLORATION
 BOOTSTRAP = generate_argparser().parse_args().BOOTSTRAP
+initflow = generate_argparser().parse_args().initflow
 
 tf.random.set_seed(SEED)
 
@@ -153,6 +154,7 @@ flow = GFlowCayleyLinear(
     batch_memory=BATCH_MEMORY,
     FlowEstimatorGen=(FlowEstimator[0], FlowEstimator_options),
     length_cutoff_factor=length_cutoff_factor,
+    initflow=initflow
 )
 
 train_batch_size = BATCH_SIZE

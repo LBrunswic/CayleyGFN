@@ -56,7 +56,7 @@ def launch_sim(param,EXEC_NUMB):
 def is_done(param):
     B = list(A.keys())
     for key in param:
-        B = [x for x in B if A[x]['param'][key]==param[key]]
+        B = [x for x in B if key in A[x]['param'] and A[x]['param'][key]==param[key] ]
     return len(B)
 
 def find_EXEC_NUMB(size):

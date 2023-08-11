@@ -18,6 +18,7 @@ class GFlowCayleyLinear(tf.keras.Model):
                  batch_memory=1,
                  length_cutoff_factor=4,
                  default_exploration=None,
+                 initflow=1.0,
                  **kwargs
         ):
         if name is None:
@@ -38,7 +39,12 @@ class GFlowCayleyLinear(tf.keras.Model):
         self.batch_memory = batch_memory
         self.compile_build_dataset()
         self.default_exploration = default_exploration
-
+        self.initial_flow = tf.Variable(
+            initial_value=tf.keras.initializers.Constant(initflow)(shape=(1,), dtype=self.dd_v),
+            trainable=True,
+            constraint=tf.keras.constraints.non_neg(),
+            name='init_flow'
+        )
     def build(self,input_shape): #(None,path_length,emb_dim)
         self.FlowEstimator.build((None,self.embedding_dim))
         self.initial_flow = tf.Variable(

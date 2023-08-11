@@ -27,6 +27,14 @@ def generate_argparser():
         dest="BATCH_SIZE",
         type=int,
     )
+
+    parser.add_argument(
+        "--initflow",
+        help="Gflow traininginitflow Batch size ",
+        default=1.,
+        dest="initflow",
+        type=float,
+    )
     parser.add_argument(
         "--epochs",
         help="Gflow training: EPOCHS",
