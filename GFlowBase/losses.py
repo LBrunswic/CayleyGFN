@@ -39,10 +39,11 @@ def Bengio(x):
 def Alog(x):
     return tf.math.log(1+tf.math.abs(x))
 
-@tf.function
-def Alogsquare(x):
-    return tf.math.log(1+tf.square(tf.math.abs(x)))
 
+def Alogsquare(alpha=2,delta=1e-3):
+    @tf.function
+    def aux(x):
+        return tf.math.log(1+delta*tf.pow(tf.math.abs(x),alpha))
 
 def Apower(alpha=0.5):
     @tf.function

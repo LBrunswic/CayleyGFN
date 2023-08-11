@@ -49,6 +49,14 @@ def generate_argparser():
         dest="SIZE",
         type=int,
     )
+    )
+    parser.add_argument(
+        "--encoding",
+        help="kernel encoding",
+        default=-1,
+        dest="ENCODING",
+        type=int,
+    )
     parser.add_argument(
         "--generators",
         help="Gflow training: GENERATORS",

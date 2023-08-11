@@ -63,6 +63,7 @@ length_cutoff_factor = generate_argparser().parse_args().length_cutoff_factor
 EXPLORATION = generate_argparser().parse_args().EXPLORATION
 BOOTSTRAP = generate_argparser().parse_args().BOOTSTRAP
 initflow = generate_argparser().parse_args().initflow
+ENCODING = generate_argparser().parse_args().ENCODING
 
 tf.random.set_seed(SEED)
 
@@ -117,13 +118,14 @@ FlowEstimator_options = {
             # 'final_activation' : 'sigmoid',
             # 'final_activation' : 'swish',
             'final_activation' : 'linear',
+            'encoding':encoding,
         },
         'kernel_options': {
             'activation': tf.keras.layers.LeakyReLU(),
             # 'activation': 'swish',
             # 'activation': 'linear',
             'kernel_initializer' : tf.keras.initializers.HeNormal(),
-            # 'kernel_regularizer' : tf.keras.regularizers.L1L2(l1=0.01, l2=0.01)
+            'kernel_regularizer' : tf.keras.regularizers.L1L2(l1=0.01, l2=0.01)
         }
     }
 
@@ -202,6 +204,7 @@ Scheduler = [
 
 loss_fn_dic = {
     'powB': lambda alphaA,alphaB,betaB:MeanABError(A=Apower(alphaA),B=Bpower(alphaB,betaB)),
+    'AlogsquareB': lambda alphaA,alphaB,betaB:MeanABError(A=Alogsquare(alphaA),B=Bpower(alphaB,betaB)),
     'pow': lambda alphaA:MeanABError(A=Apower(alphaA)),
     'Bengio':lambda :divergence(),
 }
