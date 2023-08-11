@@ -33,11 +33,9 @@ def dense_gen(ndirectactions,kernel_depth=2,width=64,final_activation=tf.math.ab
         tf.keras.layers.Dense(
             nout,
             activation=final_activation,
-            kernel_initializer=tf.keras.initializers.Constant(1.),
+            kernel_initializer=tf.keras.initializers.Constant(1e-3),
             bias_initializer=tf.keras.initializers.Constant(1.)
         )
     )
 
     return head(flow_kernel)
-
-

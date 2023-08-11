@@ -42,7 +42,7 @@ class GFlowCayleyLinear(tf.keras.Model):
     def build(self,input_shape): #(None,path_length,emb_dim)
         self.FlowEstimator.build((None,self.embedding_dim))
         self.initial_flow = tf.Variable(
-            initial_value=tf.keras.initializers.Constant(0.)(shape=(1,), dtype=self.dd_v),
+            initial_value=tf.keras.initializers.Constant(2.)(shape=(1,), dtype=self.dd_v),
             trainable=True,
             constraint=tf.keras.constraints.non_neg(),
             name='init_flow'
