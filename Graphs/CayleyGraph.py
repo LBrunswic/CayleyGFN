@@ -81,16 +81,14 @@ def Symmetric(n,Gen='trans_cycle_a', inverse = False,dtype='float32',k=1):
     return CayleyGraphLinearEmb(initial,direct_actions,diameter,random_gen=random_gen,name='Sym%s_%s' % (n,Gen))
 
 
-def RubicksCube(width=3,Gen='default', inverse = False,dtype='float32'):
+def RubicksCube(width=3,Gen='default', inverse = False,dtype='float32',melange=200):
     n = 48
     def aux(sigma):
-        if inverse:
-            return np.unique(sigma,return_index=True)[1]
-        return sigma
+        return np.unique(sigma,return_index=True)[1]
     initial = np.arange(n)
     if Gen == 'default':
         generators = [
-            cycle_dec_to_array(sigma,start=1)
+            cycle_dec_to_array(n,sigma,start=1,dtype=int)
             for sigma in [
                 [(1, 3, 8, 6),(2, 5, 7, 4),(9, 33, 25, 17),(10, 34, 26, 18),(11, 35, 27, 19)],
                 [(9, 11, 16, 14),(10, 13, 15, 12),(1, 17, 41, 40),(4, 20, 44, 37),(6, 22, 46, 35)],
@@ -105,10 +103,20 @@ def RubicksCube(width=3,Gen='default', inverse = False,dtype='float32'):
         diameter = 20
     else:
         raise NotImplementedError('The set of generator is unknown')
-    direct_actions = np.zeros((len(generators),n,n))
+    direct_actions = np.zeros((len(generators),n,n),dtype='float32')
     for i in range(len(generators)):
         direct_actions[i] = permutation_matrix(generators[i])
-    random_gen = lambda b:random_perm(b,n)
+    generators = np.array(generators)
+    def random_gen(batch_size):
+        base = np.full((batch_size,n),np.arange(n))
+        indices = np.arange(len(generators),dtype=int)
+        def kernel(x):
+            c = np.random.choice(indices,size=batch_size)
+            I = generators[c]
+            return x[np.arange(batch_size).reshape(-1,1),I]
+        for i in range(melange):
+            base = kernel(base)
+        return base
     return CayleyGraphLinearEmb(initial,direct_actions,diameter,random_gen=random_gen,name='Sym%s_%s' % (n,Gen))
 
 #

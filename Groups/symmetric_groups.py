@@ -7,8 +7,8 @@ def permutation_matrix(sigma):
         P[i, sigma[i]] = 1
     return P
 
-def cycle_dec_to_array(n,cycles=[],start=0):
-    res = np.arange(n)
+def cycle_dec_to_array(n,cycles=[],start=0,dtype='float32'):
+    res = np.arange(n,dtype=dtype)
     for omega in cycles:
         ell = len(omega)
         for i in range(ell):
@@ -38,4 +38,3 @@ def random_perm_from_gen(batch_size, generators,iteration=100,stalk=None):
         for j in range(iteration):
             admissible[i] = generators[moves[i,j]]@admissible[i]
     return admissible
-

@@ -21,10 +21,11 @@ def R_first_one(scale,*arg,dtype= tf.float32,**kwarg):
         return scale*tf.cast(x[:,0]==1,dtype)
     return R
 
-def R_first_one(scale,*arg,dtype= tf.float32,**kwarg):
 
+def R_first_k(scale,k,*arg,dtype= tf.float32,**kwarg):
+    target =  tf.constant(np.arange(k).reshape(1,-1)),dtype=dtype)
     def R(x):
-        return scale*tf.cast(x[:,0]==1,dtype)
+        return scale*tf.nn.relu(1-2*tf.norm(x-target,ord=1,axis=1))
     return R
 
 
@@ -44,8 +45,8 @@ def H_first_one(*arg,dtype=tf.float32,**kwarg):
 
 
 def R_rubick(*arg,dtype=tf.float32,**kwarg):
-    target = tf.constant(np.arange(54),dtype=dtype)
-    @tf.function(input_signature=[tf.TensorSpec(shape=(None,54), dtype=tf.float32)])
+    target = tf.constant(np.arange(48),dtype=dtype)
+    # @tf.function(input_signature=[tf.TensorSpec(shape=(None,48), dtype=tf.float32)])
     def R(x):
         return tf.nn.relu(1-2*tf.norm(x-target,ord=1,axis=1))
     return R

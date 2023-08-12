@@ -49,7 +49,7 @@ def generate_argparser():
         dest="SIZE",
         type=int,
     )
-    )
+    
     parser.add_argument(
         "--encoding",
         help="kernel encoding",

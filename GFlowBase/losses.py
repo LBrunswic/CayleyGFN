@@ -44,7 +44,7 @@ def Alogsquare(alpha=2,delta=1e-3):
     @tf.function
     def aux(x):
         return tf.math.log(1+delta*tf.pow(tf.math.abs(x),alpha))
-
+    return aux
 def Apower(alpha=0.5):
     @tf.function
     def aux(x):

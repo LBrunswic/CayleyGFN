@@ -8,6 +8,8 @@ from GFlowBase.kernel import dense_gen
 from GFlowBase.GFlowCayley import GFlowCayleyLinear
 from GFlowBase.losses import *
 from GFlowBase.rewards import R_one, R_first_one,H_first_one,Reward,R_zero,R_rubick,H_rubick,Manhattan
+from Groups.symmetric_groups import random_perm
+
 
 def edgeflow(FOLDER):
     # FOLDER = sys.argv[1]
@@ -39,6 +41,7 @@ def edgeflow(FOLDER):
                 'kernel_depth' : HP['MLP_depth'],
                 'width' : HP['MLP_width'],
                 'final_activation' : 'linear',
+                'encoding':HP['encoding']
             },
             'kernel_options': {
                 'activation': tf.keras.layers.LeakyReLU(),
@@ -62,16 +65,36 @@ def edgeflow(FOLDER):
     flow = GFlowCayleyLinear(
         graph=G,
         reward=Reward(
-            reward_fn=Rewards[key](HP['size'],*param)
+            reward_fn=reward_fn_dic[key](HP['size'],*param)
         ),
         batch_size=HP['batchsize'],
         batch_memory=HP['batch_memory'],
         FlowEstimatorGen=(FlowEstimator[0], FlowEstimator_options),
         length_cutoff_factor=HP['length_cutoff_factor'],
+
     )
     train_batch_size = HP['batchsize']
     X = tf.zeros((train_batch_size,(1+G.nactions),flow.embedding_dim))
     flow(X)
     flow.load_weights(os.path.join(FOLDER,'model.ckpt'))
-    states = np.array(list(permutations(list(range(HP['size'])))),dtype='float32')
-    return flow.FlowEstimator(states).numpy(),flow,states
+
+    flow2 = GFlowCayleyLinear(
+        graph=G,
+        reward=Reward(
+            reward_fn=Rewards[key](HP['size'],*param)
+        ),
+        batch_size=HP['batchsize'],
+        batch_memory=HP['batch_memory'],
+        FlowEstimatorGen=(FlowEstimator[0], FlowEstimator_options),
+        length_cutoff_factor=20
+    )
+    flow2(X)
+    for i,weight in enumerate(flow2.FlowEstimator.weights):
+        weight.assign(flow.FlowEstimator.weights[i])
+    # flow2.initflow=flow.initflow
+    # states = np.array(list(permutations(list(range(HP['size'])))),dtype='float32')
+    return flow,flow2
+
+
+def estimate_reward(reward,size,N=10000):
+    return np.mean(reward(random_perm(N,size)))
