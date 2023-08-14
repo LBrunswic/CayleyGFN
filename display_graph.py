@@ -7,9 +7,9 @@ from Graphs.CayleyGraph import Symmetric
 from GFlowBase.kernel import dense_gen
 from GFlowBase.GFlowCayley import GFlowCayleyLinear
 from GFlowBase.losses import *
-from GFlowBase.rewards import R_one, R_first_one,H_first_one,Reward,R_zero,R_rubick,H_rubick,Manhattan
+from GFlowBase.rewards import *
 from Groups.symmetric_groups import random_perm
-
+from metrics import FollowInitLoss, plot,ReplayBuffer
 
 def edgeflow(FOLDER):
     # FOLDER = sys.argv[1]
@@ -19,7 +19,9 @@ def edgeflow(FOLDER):
         HP = eval(''.join(f.readlines()))
     print(HP['reward'])
     default = {
-        'MLP_width':128
+        'MLP_width':128,
+        'heuristic_param':1e-4,
+        'heuristic_scale':1.
     }
     for key in default:
         if key not in HP:
@@ -48,24 +50,38 @@ def edgeflow(FOLDER):
                 'kernel_initializer' : tf.keras.initializers.HeNormal(),
             }
         }
-    Rewards = {
-        'R_one': R_one,
-        'R_first_one':R_first_one,
-        'Manhattan': Manhattan,
-    }
+
+
 
     reward_fn_dic = {
         'Manhattan': lambda size,width:Manhattan(size,width=width),
         'R_first_one': R_first_one,
+        'RubicksCube': R_first_one,
+        'R_first_k': R_first_k,
     }
-
     key = HP['reward'].split(',')[0]
     param = [eval(x) for x in HP['reward'].split(',')[1:]]
+    if HP['heuristic']:
+        if HP['heuristic']<=HP['size']:
+            heuristic_fn = Manhattan(HP['size'],width=HP['heuristic'])
+        else:
+            heuristic_fn = TwistedManhattan(\
+                HP['size'],
+                width=HP['heuristic']-HP['size'],
+                scale=HP['heuristic_param'],
+                factor=HP['heuristic_scale']
+            )
+
+
+    else:
+        heuristic_fn = R_zero(HP['size'])
+
 
     flow = GFlowCayleyLinear(
         graph=G,
         reward=Reward(
-            reward_fn=reward_fn_dic[key](HP['size'],*param)
+            reward_fn=reward_fn_dic[key](HP['size'],*param),
+            heuristic_fn=heuristic_fn,
         ),
         batch_size=HP['batchsize'],
         batch_memory=HP['batch_memory'],
@@ -81,7 +97,8 @@ def edgeflow(FOLDER):
     flow2 = GFlowCayleyLinear(
         graph=G,
         reward=Reward(
-            reward_fn=Rewards[key](HP['size'],*param)
+            reward_fn=reward_fn_dic[key](HP['size'],*param),
+            heuristic_fn=heuristic_fn,
         ),
         batch_size=HP['batchsize'],
         batch_memory=HP['batch_memory'],
@@ -93,7 +110,17 @@ def edgeflow(FOLDER):
         weight.assign(flow.FlowEstimator.weights[i])
     # flow2.initflow=flow.initflow
     # states = np.array(list(permutations(list(range(HP['size'])))),dtype='float32')
-    return flow,flow2
+    Replay2 = ReplayBuffer(
+        model=flow2,
+        epoch_length=20,
+        path_draw=True
+    )
+    Replay1 = ReplayBuffer(
+        model=flow,
+        epoch_length=20,
+        path_draw=True
+    )
+    return flow,flow2,Replay1,Replay2
 
 
 def estimate_reward(reward,size,N=10000):

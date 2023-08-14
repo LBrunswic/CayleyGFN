@@ -58,6 +58,12 @@ def Symmetric(n,Gen='trans_cycle_a', inverse = False,dtype='float32',k=1):
         if inverse:
             generators.append(aux(generators[1]))
         diameter = n
+    elif Gen == 'transpositions':
+        generators = [
+            list(range(i))+[i+1,i]+list(range(i+2,n))
+            for i in range(n-1)
+        ]
+        diameter = n
     elif Gen == 'all':
         generators = list(itertools.permutations(list(range(n))))
         diameter = 1
@@ -118,7 +124,7 @@ def RubicksCube(width=3,Gen='default', inverse = False,dtype='float32',melange=2
             base = kernel(base)
         return base
     return CayleyGraphLinearEmb(initial,direct_actions,diameter,random_gen=random_gen,name='Sym%s_%s' % (n,Gen))
-
+#
 #
 # def build_representation(G):
 #     def aux(x):

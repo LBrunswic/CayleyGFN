@@ -43,7 +43,7 @@ class FollowInitLoss(tf.keras.callbacks.Callback):
         with open(os.path.join(self.folder,self.save_name+'_captions.npy'),'bw') as f:
             np.save(f,np.array(['init_diff','loss','exploration']))
 
-    
+
 class ReplayBuffer(tf.keras.callbacks.Callback):
     def __init__(self,
         model, epoch_length ,save_name='Errors',
@@ -107,7 +107,8 @@ class ReplayBuffer(tf.keras.callbacks.Callback):
         T = time()
         if self.path_draw:
             self.gen_path(model=self.model,exploration=0)
-        self.logger.info('Path gen : %s seconds' % (time()-T))
+        if self.logger is not None:
+            self.logger.info('Path gen : %s seconds' % (time()-T))
         T=time()
         self.compute_pathsFIOR()
         self.ErrorRhatVals.append(self.Rhat_Error().numpy())
@@ -236,7 +237,8 @@ class ReplayBuffer(tf.keras.callbacks.Callback):
         for variables in self.model.variables:
             if np.sometrue(np.isnan(variables)):
                 NaN = True
-        self.logger.info('The model contains NAN weights')
+        if self.logger is not None:
+            self.logger.info('The model contains NAN weights')
 
     def update_reward(self,epoch):
         self.model.reward.update_reward(epoch=epoch)

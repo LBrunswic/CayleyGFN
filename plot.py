@@ -21,7 +21,7 @@ print('There are %s finished experiments' % len(A))
 for key in A[K[0]]['param']:
     if key in ['folder','gpu']:
         continue
-    choices  = set([A[x]['param'][key] for x in A])
+    choices  = set([A[x]['param'][key] for x in A if key in A[x]['param']])
     # if len(choices)==1:
     #     continue
     print(f"{key} : {choices}")
@@ -71,6 +71,8 @@ def score(L,metric=-1,val=5,interval=300,A=None):
 
 
 def show(VARIABLE={},threshold=[0,5,10,20,30,40,60],A=None,plot=True,bbox_to_anchor=(0,0),interval=50,ER='spot',Nepoch=20000,averaging_width=100,target_init=1.0):
+    if 'epochs' in VARIABLE:
+        Nepoch = np.min(VARIABLE['epochs'])
     if A is None:
         A = extract()
         A = {x: A[x] for x in A if A[x]['done']}

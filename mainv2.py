@@ -25,11 +25,11 @@ else:
 import platform
 import numpy as np
 from time import time
-from Graphs.CayleyGraph import Symmetric
+from Graphs.CayleyGraph import Symmetric,RubicksCube
 from GFlowBase.kernel import dense_gen
 from GFlowBase.GFlowCayley import GFlowCayleyLinear
 from GFlowBase.losses import *
-from GFlowBase.rewards import R_one, R_first_one,H_first_one,Reward,R_zero,R_rubick,H_rubick,Manhattan
+from GFlowBase.rewards import *
 from metrics import FollowInitLoss, plot,ReplayBuffer
 from metrics import represent_symmetric_R_first_one
 from datetime import datetime
@@ -64,6 +64,9 @@ EXPLORATION = generate_argparser().parse_args().EXPLORATION
 BOOTSTRAP = generate_argparser().parse_args().BOOTSTRAP
 initflow = generate_argparser().parse_args().initflow
 ENCODING = generate_argparser().parse_args().ENCODING
+HEURISTIC_PARAM = generate_argparser().parse_args().HEURISTIC_PARAM
+heuristic_scale = generate_argparser().parse_args().heuristic_scale
+
 
 tf.random.set_seed(SEED)
 
@@ -96,18 +99,21 @@ STOP = False
 # except:
 #     pass
 
-
-G = Symmetric(
-    SIZE,
-    Gen=GENERATORS,
-    inverse=INVERSE,
-    k=1,
-    # logger=logger
-)
+if REWARD != 'RubicksCube':
+    G = Symmetric(
+        SIZE,
+        Gen=GENERATORS,
+        inverse=INVERSE,
+        k=1,
+        # logger=logger
+    )
+else:
+    G = RubicksCube(
+        inverse=INVERSE,
+    )
 logger.info(str(G.initial))
 FlowEstimator = [
     dense_gen,
-    # linear,
     ]
 
 FlowEstimator_options = {
@@ -117,39 +123,43 @@ FlowEstimator_options = {
             # 'final_activation' : tf.keras.layers.LeakyReLU(),
             # 'final_activation' : 'sigmoid',
             # 'final_activation' : 'swish',
-            'final_activation' : 'linear',
-            'encoding':encoding,
+            'final_activation' : lambda x: 20* tf.math.tanh(x),
+            'encoding':ENCODING,
         },
         'kernel_options': {
-            'activation': tf.keras.layers.LeakyReLU(),
+            # 'activation': tf.keras.layers.LeakyReLU(),
+            'activation': 'tanh',
             # 'activation': 'swish',
             # 'activation': 'linear',
-            'kernel_initializer' : tf.keras.initializers.HeNormal(),
-            'kernel_regularizer' : tf.keras.regularizers.L1L2(l1=0.01, l2=0.01)
+            # 'kernel_initializer' : tf.keras.initializers.HeNormal(),
+            'kernel_initializer' : tf.keras.initializers.Orthogonal(seed=SEED),
+            'kernel_regularizer' : tf.keras.regularizers.L1L2(l1=0.01, l2=0.1)
         }
     }
 
-if HEURISTIC:
-    heuristic_fn = H_first_one(SIZE)
-else:
-    heuristic_fn = R_zero(SIZE)
-Rewards = {
-    'R_one': R_one,
-    'R_first_one':R_first_one,
-    'Manhattan': Manhattan,
-}
+
+
 
 reward_fn_dic = {
     'Manhattan': lambda size,width:Manhattan(size,width=width),
     'R_first_one': R_first_one,
+    'RubicksCube': R_first_one,
+    'R_first_k': R_first_k,
 }
 key = REWARD.split(',')[0]
 param = [eval(x) for x in REWARD.split(',')[1:]]
+if HEURISTIC:
+    if HEURISTIC<=SIZE:
+        heuristic_fn = Manhattan(SIZE,width=HEURISTIC)
+    else:
+        heuristic_fn = TwistedManhattan(SIZE,width=HEURISTIC-SIZE,scale=HEURISTIC_PARAM,factor=heuristic_scale)
+else:
+    heuristic_fn = R_zero(SIZE)
 
 flow = GFlowCayleyLinear(
     graph=G,
     reward=Reward(
-        reward_fn=Rewards[key](SIZE,*param),
+        reward_fn=reward_fn_dic[key](SIZE,*param),
         heuristic_fn=heuristic_fn,
     ),
     batch_size=BATCH_SIZE,
@@ -169,20 +179,16 @@ if LOAD:
 if BOOTSTRAP != '':
     flow.load_weights(os.path.join('tests/',BOOTSTRAP,'model.ckpt'))
 
-
-
-
 def scheduler(epoch, lr):
-  if epoch < 1000:
+  if epoch < 4000:
     return LR
   else:
-    return LR/(1+np.sqrt(epoch/5)-np.sqrt(998/5))
-
+    return LR/(1+np.sqrt(epoch/20))
 def exp_scheduler(epoch, lr):
-  if epoch < 1000:
+  if epoch < 200:
     return lr
   else:
-    return lr * tf.math.exp(-0.1)
+    return lr * 0.998
 
 
 def cosine_scheduler(steps):
@@ -229,7 +235,7 @@ Replay = ReplayBuffer(
     logger=logger,
     folder=folder,
     load=LOAD,
-    # path_draw=True
+    path_draw=True
 )
 logger.info('MEMORY_LIMIT: %s'% MEMORY_LIMIT)
 
@@ -240,6 +246,7 @@ T = datetime.now()
 logger.info('Training starts')
 logger.handlers[0].flush()
 start_epoch = len(Replay.InitVals)
+
 for i in range(start_epoch,EPOCHS):
     if i == start_epoch + 1 :
         T = datetime.now()

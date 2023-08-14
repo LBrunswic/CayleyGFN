@@ -23,18 +23,39 @@ def R_first_one(scale,*arg,dtype= tf.float32,**kwarg):
 
 
 def R_first_k(scale,k,*arg,dtype= tf.float32,**kwarg):
-    target =  tf.constant(np.arange(k).reshape(1,-1)),dtype=dtype)
+    target =  tf.constant(np.arange(k).reshape(1,-1),dtype=dtype)
     def R(x):
-        return scale*tf.nn.relu(1-2*tf.norm(x-target,ord=1,axis=1))
+        return scale*tf.nn.relu(1-2*tf.norm(x[:,:k]-target,ord=1,axis=1))
     return R
 
 
 
 def Manhattan(size,*arg,width=1,dtype= tf.float32,**kwarg):
     center = tf.constant(tf.cast(np.arange(width),dtype))
+    # a = np.power(1e-4,1/size)
+    # score = tf.constant(a**np.arange(size),dtype=dtype)
+    # v = tf.constant(np.arange(width).reshape(1,1,-1),dtype=dtype)
+    # hot = lambda x: tf.nn.relu(1+x)*tf.nn.relu(1-x)
     def R(x):
+        # raw_score = tf.einsum('ijk,j->i', hot(tf.expand_dims(x,-1)-v), score )
         return (tf.linalg.norm(tf.cast(x,dtype)[:,:width]-center,ord=1,axis=1)+1e-1)**(-1)
+        # return tf.nn.relu(1-0.01*tf.linalg.norm(tf.cast(x,dtype)[:,:width]-center,ord=1,axis=1))
+        # return raw_score
+    return R
 
+def TwistedManhattan(size,*arg,width=1,scale=1e-4,factor=1.,dtype= tf.float32,**kwarg):
+    print(size,width,arg,factor,scale,dtype,kwarg)
+    a = np.power(scale,1/size)
+    # score = factor*tf.constant(a**np.arange(size),dtype=dtype)
+    score = factor*tf.constant(a**np.arange(size),dtype=dtype)
+    v = tf.constant(np.arange(width).reshape(1,1,-1),dtype=dtype)
+    hot = lambda x: tf.nn.relu(1+x)*tf.nn.relu(1-x)
+    print(score.shape)
+    @tf.function
+    def R(x):
+        raw_score = tf.einsum('ijk,j->i', hot(tf.expand_dims(x,-1)-v), score )
+        return raw_score
+    print(R)
     return R
 
 def H_first_one(*arg,dtype=tf.float32,**kwarg):
@@ -69,14 +90,18 @@ def H_rubick(*arg,dtype=tf.float32,**kwarg):
 class balance_add(tf.keras.Model):
     def __init__(self):
         super(balance_add, self).__init__()
-        self.balance = tf.Variable(initial_value=np.array([1.,1.]),dtype=tf.float32)
+        self.balance = tf.Variable(
+            initial_value=np.array([1.,1.]),
+            dtype=tf.float32,
+            trainable=False
+        )
     def call(self, r,h):
         return tf.tensordot(tf.stack([r,h],axis=-1),self.balance,axes=1)
 
 
 def schedule_add(epoch=0):
     r = 1
-    h = 1/(epoch//10+1)
+    h = 1/10
     return np.array([r,h])
 
 class Reward():

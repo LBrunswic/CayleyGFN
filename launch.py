@@ -7,7 +7,8 @@ from multiprocessing import Process,active_children
 import subprocess
 from utils import extract
 import logging
-
+from plot import show
+import numpy as np
 
 GPUS = [0]
 
@@ -50,6 +51,7 @@ def launch_sim(param,EXEC_NUMB):
     param['start_timestamp'] = str(time())
     with open(os.path.join(folder,'HP_dict'), "w") as hp_file:
         hp_file.write(str(param))
+    print(cmd)
     with open(os.path.join('logs','log%s.log' % EXEC_NUMB), "w") as outfile:
         subprocess.run(cmd, stdout=outfile,stderr=outfile)
 
@@ -85,7 +87,7 @@ for param in TODO:
         continue
     print(param)
     logger.info('Not done: %s' % param)
-    sleep(10)
+    sleep(6)
     done = False
     while not done:
         sleep(2)
@@ -109,3 +111,8 @@ for param in TODO:
                 break
         if not done:
             logger.info('no GPU available, we retry later')
+sleep(10)
+try:
+    show(threshold=np.arange(500)/100,VARIABLE={key:VARIABLE_LIST[0][key] for key in VARIABLE_LIST[0] if key not in ['seed']},averaging_width=1)
+except:
+    print('failed')

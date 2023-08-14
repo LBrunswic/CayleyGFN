@@ -49,7 +49,7 @@ def generate_argparser():
         dest="SIZE",
         type=int,
     )
-    
+
     parser.add_argument(
         "--encoding",
         help="kernel encoding",
@@ -152,6 +152,20 @@ def generate_argparser():
         default=0,
         dest="HEURISTIC",
         type=int,
+    )
+    parser.add_argument(
+        "--heuristic_param",
+        help="Heuristic",
+        default=1e-4,
+        dest="HEURISTIC_PARAM",
+        type=float,
+    )
+    parser.add_argument(
+        "--heuristic_scale",
+        help="Heuristic",
+        default=1.,
+        dest="heuristic_scale",
+        type=float,
     )
 
     parser.add_argument(

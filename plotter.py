@@ -49,7 +49,7 @@ def plot(to_plot = [] ,in_folder='tests', dest_folder='results/',file_name='Erro
     x = np.arange(Nepoch)
     fig, axs = plt.subplots(nrows=3,ncols=2,figsize=(32,18))
     y_axes_label = [r'$\log E_{Rhat}$',r'$\log E_{Rbar}$',r'$\mathcal L$',r'$\mathcal E_I$',r'$E(\tau)$',r'$E(R)$']
-    colormap = mpl.cm.get_cmap('viridis')
+    colormap = mpl.cm.get_cmap('Set1')
     color='k'
     def c1(x,m=0,M=1):
         return colormap(m+x/n_graph*(M-m))
@@ -66,9 +66,8 @@ def plot(to_plot = [] ,in_folder='tests', dest_folder='results/',file_name='Erro
         axs[i].tick_params(axis='y', rotation=45, labelcolor=color)
         for j in range(n_graph):
             axs[i].plot(x, all[i][j], color=c1(j), label=to_plot[j].replace('_','-'))
-    axs[0].legend(loc='upper center', bbox_to_anchor=(0.2, -0.05),
-           fancybox=True, shadow=True, ncol=1)
-    # fig.tight_layout()
+    axs[0].legend(fancybox=True, shadow=True, ncol=1)
+    fig.tight_layout()
     plt.savefig(os.path.join(dest_folder,image_name),dpi=300)
     plt.clf()
     return ERhat,ERbar,loss,init,totR,MaxR
