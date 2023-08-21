@@ -1,5 +1,5 @@
 import utils
-import os
+import os, sys
 import itertools
 from time import sleep,time
 from datetime import datetime
@@ -11,7 +11,7 @@ from plot import show
 import numpy as np
 
 GPUS = [0]
-
+Dt = int(sys.argv[1])
 
 logger = logging.getLogger('launcher')
 logger.setLevel(logging.INFO)
@@ -87,17 +87,20 @@ for param in TODO:
         continue
     print(param)
     logger.info('Not done: %s' % param)
-    sleep(6)
+    sleep(Dt)
     done = False
     while not done:
-        sleep(2)
         logger.handlers[0].flush()
         gpu_usage = utils.gpu_memory()
         for i in range(len(GPUS)):
-            gpu = GPUS[i]
-            used, total = gpu_usage[gpu]
-            print(used,total,2**param['memory_limit']+2**10)
+            try:
+                gpu = GPUS[i]
+                used, total = gpu_usage[gpu]
+            except:
+                break
+            print(used,total,2**param['memory_limit']+2**10,end='')
             if total-used>2**param['memory_limit']+2**10:
+                print()
                 param['gpu'] = gpu
                 EXEC_NUMB= find_EXEC_NUMB(param['size'])
                 p = Process(target=launch_sim, args=(param,EXEC_NUMB))
@@ -111,6 +114,7 @@ for param in TODO:
                 break
         if not done:
             logger.info('no GPU available, we retry later')
+# while:
 sleep(10)
 try:
     show(threshold=np.arange(500)/100,VARIABLE={key:VARIABLE_LIST[0][key] for key in VARIABLE_LIST[0] if key not in ['seed']},averaging_width=1)

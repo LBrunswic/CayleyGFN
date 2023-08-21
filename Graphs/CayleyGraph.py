@@ -78,12 +78,25 @@ def Symmetric(n,Gen='trans_cycle_a', inverse = False,dtype='float32',k=1):
             generators.append(aux(generators[0]))
             generators.append(aux(generators[1]))
         diameter = int(n*np.log(1+n))
+    elif Gen == 'large_cycles':
+        p = 5
+        generators = [
+            list(range(0,i))+list(range(i+1,i+p)) + [i] + list(range(i+p,n))
+            for i in range(0,n-p,4)
+        ] + [list(range(0,n-p+1)) + list(range(n-p+2,n)) + [n-p+1]]
+        if inverse:
+            a = [aux(x) for x in generators]
+            generators += a
+        diameter = int(n)
+        print(generators)
     else:
         raise NotImplementedError('The set of generator is unknown')
     direct_actions = np.zeros((len(generators),k*n,k*n))
     for i in range(len(generators)):
         direct_actions[i] = permutation_matrix(generators[i])
-    random_gen = lambda b:random_perm(b,n)
+    # random_gen = lambda b:random_perm(b,n)
+    random_gen = lambda b:random_perm_extremal(b,n)
+    # random_gen = lambda b: np.concatenate([random_perm_extremal(b//2,n),random_perm(b-b//2,n)])
     return CayleyGraphLinearEmb(initial,direct_actions,diameter,random_gen=random_gen,name='Sym%s_%s' % (n,Gen))
 
 

@@ -15,7 +15,8 @@ class total(tf.keras.layers.Layer):
 
     def call(self, inputs):
         V = self.kernel(inputs)
-        return tf.abs(V[:,-1:])*tf.nn.softmax(V[:,:-1])
+        return tf.math.exp(V[:,-1:])*tf.nn.softmax(V[:,:-1])
+        # return tf.math.abs(V[:,-1:])*tf.nn.softmax(V[:,:-1])
 
 class PositionalEncoding(tf.keras.layers.Layer):
     def __init__(self,n=10,**kwargs):
@@ -56,6 +57,9 @@ def dense_gen(ndirectactions,kernel_depth=2,width=64,final_activation=tf.math.ab
         )
     )
     return head(flow_kernel)
+
+
+
 def tranformer_gen(ndirectactions,kernel_depth=2,width=64,final_activation=tf.math.abs,softmax_head=True,kernel_options={},ke=-1):
     flow_kernel = tf.keras.Sequential(name='flow_kernel')
     if encoding>0:

@@ -66,7 +66,11 @@ initflow = generate_argparser().parse_args().initflow
 ENCODING = generate_argparser().parse_args().ENCODING
 HEURISTIC_PARAM = generate_argparser().parse_args().HEURISTIC_PARAM
 heuristic_scale = generate_argparser().parse_args().heuristic_scale
-
+if SEED == 0:
+    SEED = 1234
+    BASELINE = 1
+else:
+    BASELINE = 0
 
 tf.random.set_seed(SEED)
 
@@ -121,23 +125,25 @@ FlowEstimator_options = {
             'kernel_depth' : MLP_DEPTH,
             'width' : MLP_WIDTH,
             # 'final_activation' : tf.keras.layers.LeakyReLU(),
+            'final_activation' : 'linear',
             # 'final_activation' : 'sigmoid',
             # 'final_activation' : 'swish',
-            'final_activation' : lambda x: 20* tf.math.tanh(x),
+            # 'final_activation' : lambda x: 5*tf.math.tanh(x),
             'encoding':ENCODING,
         },
         'kernel_options': {
-            # 'activation': tf.keras.layers.LeakyReLU(),
-            'activation': 'tanh',
+            'activation': tf.keras.layers.LeakyReLU(),
+            # 'activation': 'tanh',
             # 'activation': 'swish',
             # 'activation': 'linear',
             # 'kernel_initializer' : tf.keras.initializers.HeNormal(),
-            'kernel_initializer' : tf.keras.initializers.Orthogonal(seed=SEED),
+            # 'kernel_initializer' : tf.keras.initializers.Orthogonal(seed=SEED),
             'kernel_regularizer' : tf.keras.regularizers.L1L2(l1=0.01, l2=0.1)
         }
     }
 
-
+if BASELINE:
+    FlowEstimator_options['options']['final_activation'] = lambda x:0*x
 
 
 reward_fn_dic = {
@@ -180,15 +186,19 @@ if BOOTSTRAP != '':
     flow.load_weights(os.path.join('tests/',BOOTSTRAP,'model.ckpt'))
 
 def scheduler(epoch, lr):
-  if epoch < 4000:
-    return LR
-  else:
-    return LR/(1+np.sqrt(epoch/20))
+    if epoch < 200:
+        return LR
+    else:
+        alpha=0.5
+        phi = lambda x:np.power(x,alpha)
+        MAX_STEP = EPOCHS*STEP_PER_EPOCH
+        return LR*phi(MAX_STEP-epoch)/phi(MAX_STEP)
+
 def exp_scheduler(epoch, lr):
   if epoch < 200:
     return lr
   else:
-    return lr * 0.998
+    return lr * 0.99983
 
 
 def cosine_scheduler(steps):
@@ -200,7 +210,7 @@ def cosine_scheduler(steps):
 
 Scheduler = [
     tf.keras.callbacks.LearningRateScheduler(lambda epoch,lr:lr),
-    tf.keras.callbacks.LearningRateScheduler(exp_scheduler),
+    tf.keras.callbacks.LearningRateScheduler(scheduler),
     cosine_scheduler(1000),
     cosine_scheduler(3000),
     cosine_scheduler(5000),
@@ -222,7 +232,7 @@ flow.compile(
 )
 
 cp_callback = tf.keras.callbacks.ModelCheckpoint(
-    filepath=os.path.join(folder,'model.ckpt'),
+    filepath=os.path.join(folder,'model{epoch:03d}.ckpt'),
     verbose=1,
     save_weights_only=True,
     save_freq=STEP_PER_EPOCH
@@ -231,42 +241,45 @@ cp_callback = tf.keras.callbacks.ModelCheckpoint(
 
 Replay = ReplayBuffer(
     model=flow,
-    epoch_length=STEP_PER_EPOCH,
     logger=logger,
     folder=folder,
     load=LOAD,
-    path_draw=True
 )
 logger.info('MEMORY_LIMIT: %s'% MEMORY_LIMIT)
 
 for i in range(BATCH_MEMORY):
-    Replay.gen_path(model=flow)
+    flow.gen_path_aux(exploration=EXPLORATION)
 
 T = datetime.now()
 logger.info('Training starts')
 logger.handlers[0].flush()
 start_epoch = len(Replay.InitVals)
 
+print(flow.graph.actions)
+skip = 0
 for i in range(start_epoch,EPOCHS):
     if i == start_epoch + 1 :
         T = datetime.now()
+        skip = BASELINE
     logger.info('EPOCH : %s/%s' % (i,EPOCHS) )
-    dataset,mu_initial_reward = Replay.train_data(model=flow,exploration=EXPLORATION)
-    logger.info('reward : \n %s' % mu_initial_reward[:5,2])
-    flow.fit(
-        dataset,
-        mu_initial_reward,
-        initial_epoch=i*STEP_PER_EPOCH,
-        epochs=i*STEP_PER_EPOCH+STEP_PER_EPOCH,
-        verbose=0,
-        batch_size=dataset.shape[0],
-        shuffle=False,
-        callbacks=[
-            Replay,
-            cp_callback,
-            Scheduler[SCHEDULER]
-        ]
-    )
+    if not skip:
+        flow.fit(
+            np.zeros(1),
+            np.zeros(1),
+            initial_epoch=i*STEP_PER_EPOCH,
+            epochs=i*STEP_PER_EPOCH+STEP_PER_EPOCH,
+            verbose=0,
+            batch_size=1,
+            callbacks=[
+                Replay,
+                cp_callback,
+                Scheduler[SCHEDULER]
+            ]
+        )
+    else:
+        Replay.model = flow
+        Replay.on_train_begin()
+        Replay.on_train_end()
     logger.info('Initial Flow: %s' % float(flow.initial_flow))
     T2=datetime.now()
     if i>=start_epoch+1:
@@ -274,6 +287,7 @@ for i in range(start_epoch,EPOCHS):
     logger.handlers[0].flush()
     if STOP:
         break
+
 if STOP:
     logger.info('Stop signal received')
     with open(PID_PATH, 'w') as f:
@@ -281,10 +295,3 @@ if STOP:
 else:
     logger.info('All done! Bye bye!')
 logger.handlers[0].flush()
-
-
-# s = SIZE
-# G = Symmetric(s)
-# generators = G.actions.numpy().astype('int')
-# A=represent_symmetric_R_first_one(s,generators,flow.FlowEstimator)
-# A.save('S%s' % SIZE)

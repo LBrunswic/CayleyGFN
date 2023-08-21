@@ -65,7 +65,7 @@ def edgeflow(FOLDER):
         if HP['heuristic']<=HP['size']:
             heuristic_fn = Manhattan(HP['size'],width=HP['heuristic'])
         else:
-            heuristic_fn = TwistedManhattan(\
+            heuristic_fn = TwistedManhattan(
                 HP['size'],
                 width=HP['heuristic']-HP['size'],
                 scale=HP['heuristic_param'],
@@ -92,7 +92,8 @@ def edgeflow(FOLDER):
     train_batch_size = HP['batchsize']
     X = tf.zeros((train_batch_size,(1+G.nactions),flow.embedding_dim))
     flow(X)
-    flow.load_weights(os.path.join(FOLDER,'model.ckpt'))
+    flow.load_weights(os.path.join(FOLDER,'model1000.ckpt'))
+    # flow.load_weights(os.path.join(FOLDER,'model.ckpt'))
 
     flow2 = GFlowCayleyLinear(
         graph=G,
@@ -100,10 +101,10 @@ def edgeflow(FOLDER):
             reward_fn=reward_fn_dic[key](HP['size'],*param),
             heuristic_fn=heuristic_fn,
         ),
-        batch_size=HP['batchsize'],
+        batch_size=HP['batchsize']*4,
         batch_memory=HP['batch_memory'],
         FlowEstimatorGen=(FlowEstimator[0], FlowEstimator_options),
-        length_cutoff_factor=20
+        length_cutoff_factor=5
     )
     flow2(X)
     for i,weight in enumerate(flow2.FlowEstimator.weights):
@@ -112,14 +113,16 @@ def edgeflow(FOLDER):
     # states = np.array(list(permutations(list(range(HP['size'])))),dtype='float32')
     Replay2 = ReplayBuffer(
         model=flow2,
-        epoch_length=20,
-        path_draw=True
+        # epoch_length=20,
+        # path_draw=True
     )
+    Replay2.model = flow2
     Replay1 = ReplayBuffer(
         model=flow,
-        epoch_length=20,
-        path_draw=True
+        # epoch_length=20,
+        # path_draw=True
     )
+    Replay1.model = flow
     return flow,flow2,Replay1,Replay2
 
 

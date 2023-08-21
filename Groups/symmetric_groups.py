@@ -25,6 +25,9 @@ def random_perm(batch_size, n):
         admissible = admissible[np.where(indices != choice)].reshape((batch_size, -1))
     return perm
 
+def random_perm_extremal(batch_size, n):
+    return np.concatenate([random_perm(batch_size,n-1)+1,np.zeros((batch_size,1))],axis=1)
+
 def random_perm_from_gen(batch_size, generators,iteration=100,stalk=None):
     n = generators[0].shape[0]
     generators = generators.numpy()

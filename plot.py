@@ -43,7 +43,7 @@ def select_dict(keys_values,A=None):
     if A is None:
         A = extract()
         A = {x: A[x] for x in A if A[x]['done']}
-    A = {x: A[x] for x in A if A[x]['done']}
+    # A = {x: A[x] for x in A if A[x]['done']}
     res = set(A.keys())
     for key in keys_values:
         if keys_values[key] is not None:
@@ -89,7 +89,8 @@ def show(VARIABLE={},threshold=[0,5,10,20,30,40,60],A=None,plot=True,bbox_to_anc
         for i in range(len(VARIABLE)):
             param[list(VARIABLE.keys())[i]] = var_param[i]
         TODO.append(param)
-    print(TODO)
+    for x in TODO:
+        print(x)
 
     def sel(critere, threshold=[0, 5, 10, 20, 30, 40]):
         C = select_dict(critere, A=A)

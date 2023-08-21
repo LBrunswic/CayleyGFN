@@ -1,5 +1,6 @@
 *.log
 *.pyc
+*.png
 gpu_stat
 tests/*
 logs/*

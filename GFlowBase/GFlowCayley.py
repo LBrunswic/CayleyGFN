@@ -37,14 +37,9 @@ class GFlowCayleyLinear(tf.keras.Model):
         self.path_length = int(length_cutoff_factor * graph.diameter)
         self.batch_size = batch_size
         self.batch_memory = batch_memory
-        self.compile_build_dataset()
         self.default_exploration = default_exploration
-        self.initial_flow = tf.Variable(
-            initial_value=tf.keras.initializers.Constant(initflow)(shape=(1,), dtype=self.dd_v),
-            trainable=True,
-            constraint=tf.keras.constraints.non_neg(),
-            name='init_flow'
-        )
+        self.nactions = tf.constant(self.graph.nactions)
+
     def build(self,input_shape): #(None,path_length,emb_dim)
         self.FlowEstimator.build((None,self.embedding_dim))
         self.initial_flow = tf.Variable(
@@ -63,20 +58,76 @@ class GFlowCayleyLinear(tf.keras.Model):
             ],
             axis=0)
         )
+        self.id_action_inverse = tf.constant(
+            tf.linalg.inv(self.id_action)
+        )
+        self.paths_reward = tf.Variable(tf.zeros((self.batch_size*self.batch_memory,self.path_length)),trainable=False)
         self.loss_val = tf.Variable(
             initial_value=tf.keras.initializers.Constant(1.)(shape=(), dtype=self.dd_v),
             trainable=False,
             name='init_flow'
         )
+        self.path_init_flow = tf.Variable(tf.ones((self.batch_size*self.batch_memory,self.path_length)),trainable=False)
+        self.density =  tf.Variable(tf.ones((self.batch_size*self.batch_memory,self.path_length)),trainable=False)
+
+        self.FIOR = tf.Variable(tf.ones(
+                (self.batch_size*self.batch_memory,self.path_length,3)
+            ),
+            trainable=False
+        )
+        print(self.FIOR.dtype)
+
+        self.forward_edges = tf.Variable(
+            tf.zeros((self.batch_size*self.batch_memory,self.path_length,1+self.nactions,self.embedding_dim)),
+            trainable=False
+        )
+        print(self.forward_edges.dtype)
+        self.backward_edges = tf.Variable(
+            tf.zeros((self.batch_size*self.batch_memory,self.path_length,1+self.nactions,self.embedding_dim)),
+            trainable=False
+        )
+        print(self.backward_edges.dtype)
+        self.state_batch_size=self.batch_size*self.batch_memory,self.path_length
+        self.density_one = tf.constant(tf.ones_like(self.density))
+    @tf.function
+    def update_reward(self):
+        self.paths_reward.assign(
+            tf.reshape(
+                self.reward(
+                    tf.reshape(self.paths,
+                            shape=(-1,self.embedding_dim)
+                    )
+                ),
+                shape=self.paths_reward.shape
+            )
+        )
+
+    @tf.function
+    def build_input(self):
+         self.forward_edges.assign(tf.einsum('aij,btj->btai', self.id_action,self.paths))
+         self.backward_edges.assign(tf.einsum('aij,btj->btai', self.id_action_inverse,self.paths))
+
     @tf.function
     def call(self,inputs): # input shape = (batch_size*path_length*(1+naction),emb_dim)
-        naction = self.graph.nactions
-        F = self.FlowEstimator(inputs[:, 0])
-        Fout = tf.reduce_sum(F,axis=1)
-        Fin = 0
-        for i in range(naction):
-            Fin += self.FlowEstimator(inputs[:,i+1])[:,i]
-        Flow = tf.transpose(tf.stack([Fin,Fout]))
+        nactions = self.nactions
+
+        F = self.FlowEstimator(tf.reshape(self.forward_edges[:,:,0],shape=(-1,self.embedding_dim)))
+        Fout = tf.reshape(
+            tf.reduce_sum(F,axis=1),
+            shape=(self.batch_size*self.batch_memory,self.path_length,1)
+        ) + tf.reshape(self.paths_reward,shape=(self.batch_size*self.batch_memory,self.path_length,1))
+        Fin = tf.ones_like(Fout)*self.initial_flow
+        for i in tf.range(0, nactions, 1):
+            Fin += tf.reshape(
+                self.FlowEstimator(
+                    tf.reshape(
+                        self.backward_edges[:,:,i+1],
+                        shape=(-1,self.embedding_dim)
+                    )
+                )[:,i],
+                shape=(self.batch_size*self.batch_memory,self.path_length,1)
+            )
+        Flow = tf.concat([Fin,Fout],axis=-1)
         return Flow # (batch_size*path_length,2)
 
     @tf.function
@@ -90,121 +141,70 @@ class GFlowCayleyLinear(tf.keras.Model):
         for i in range(self.path_length - 1):
             Fout = self.FlowEstimator(self.paths[:batch_size, i])
             tot = tf.reduce_sum(Fout,axis=1,keepdims=True)
-            Fout = Fout+1/self.graph.nactions * tot * exploration
+            Fout = Fout+1/self.graph.nactions * (tot+delta) * exploration
             Fcum = tf.math.cumsum(Fout, axis=1)
             Fcum = Fcum / tf.reshape(Fcum[:, -1], (-1, 1))
             self.paths_actions[:,i+1].assign(tf.cast(tf.random.uniform((batch_size, 1)) <= Fcum, tf.float32))
             self.paths_actions[:,i+1].assign(tf.concat([self.paths_actions[:,i+1, :1], self.paths_actions[:,i+1, 1:] - self.paths_actions[:,i+1, :-1]], axis=1))
             self.paths[:batch_size, i + 1].assign(tf.einsum('ia,ajk,ik->ij', self.paths_actions[:,i+1], self.graph.actions, self.paths[:batch_size, i]))
-        if self.default_exploration is not None:
-            pass
-    def compile_build_dataset(self):
-        @tf.function(input_signature=(tf.TensorSpec(shape=[None,self.embedding_dim], dtype=tf.float32),))
-        def build_dataset(state_batch):
-            return tf.einsum('aij,bj->bai', self.id_action,state_batch)
-        self.build_dataset = build_dataset
+
+    def update_training_distribution(self,delta=1e-8,exploration=1e-1):
+        self.gen_path_aux(exploration=exploration)
+        self.update_reward()
+        self.FinOutReward()
+        self.compute_density(delta=delta,exploration=0.)
 
     @tf.function
-    def FinOutReward(self,paths):
-        batch_size,length = paths.shape[:2]
+    def compute_density(self,delta=1e-8,exploration=1e-1):
+        p = self.FIOR[:,:, 1] / (
+            delta+self.FIOR[:, :, 1] + self.FIOR[:, :, 2]
+        )
+        self.density.assign(tf.math.cumprod(p,exclusive=True,axis=1))
+
+    @tf.function
+    def density_foo(self,delta=1e-8,exploration=1e-1):
+        FIOR = self.FinOutReward_foo()
+        p = FIOR[:,:, 1] / (
+            delta+FIOR[:, :, 1] + FIOR[:, :, 2]
+        )
+        return tf.math.cumprod(p,exclusive=True,axis=1)
+
+    @tf.function
+    def FinOutReward_foo(self):
+        batch_size,length = self.paths.shape[:2]
         FinFout = tf.reshape(
-            self(self.build_dataset(tf.reshape(paths, shape=(-1,self.embedding_dim)))),
+            self(tf.reshape(self.paths, shape=(-1,self.embedding_dim))),
             shape=(batch_size,length,2)
         )
-        R = tf.reshape(self.reward(tf.reshape(paths,shape=(-1,self.embedding_dim))),shape=(batch_size,length,1))
+        # R = tf.reshape(self.reward(tf.reshape(paths,shape=(-1,self.embedding_dim))),shape=(batch_size,length,1))
+        R = tf.reshape(self.paths_reward,shape=(batch_size,length,1))
         return tf.concat([FinFout,R],axis=-1)
 
+    @tf.function
+    def FinOutReward(self):
+        batch_size,length = self.paths.shape[:2]
+        FinFout = tf.reshape(
+            self(tf.reshape(self.paths, shape=(-1,self.embedding_dim))),
+            shape=(batch_size,length,2)
+        )
+        # R = tf.reshape(self.reward(tf.reshape(paths,shape=(-1,self.embedding_dim))),shape=(batch_size,length,1))
+        R = tf.reshape(self.paths_reward,shape=(batch_size,length,1))
+        self.FIOR.assign(tf.concat([FinFout,R],axis=-1))
 
-
-    def show(self,folder='images',name='0'):
-
-        F = self.FlowEstimator(self.tfnodes)
-        def aux(x):
-            return str(list(tf.cast(x, tf.int32).numpy()))
-        # reward = self.reward(tfnodes)
-        for node in range(self.edges.shape[0]):
-            for action in range(self.edges.shape[1]):
-                self.dot.edge(
-                    self.nodes[node],
-                    aux(self.edges[node,action]),
-                    label='%.2E' % Decimal(float(F[node,action].numpy()))
-                )
-            # dot.node(nodes[node],nodes[node] +   )
-        self.dot.node(aux(self.graph.initial),aux(self.graph.initial) + ' FI=%.2E' % Decimal(float(self.initial_flow.numpy())))
-        self.dot.attr(label='%s' % self.loss_val.numpy())
-        self.dot.render(os.path.join(folder,'%s' % name), view=False)
 
     @tf.function
     def train_step(self, data):
-        states, mu_initial_reward = data
-        Mu = mu_initial_reward[:,:1]
-        initial = mu_initial_reward[:,1]
-        reward = mu_initial_reward[:,2]
+        # density = self.density
+        # density = tf.ones_like(self.density)
+        delta = 1.
         with tf.GradientTape() as tape:
-            Flow = self(states)
-            FlowMu = tf.concat(
-                [
-                    Flow,
-                    tf.math.log(1+Mu)
-                ],
-                axis=1
-            )
-            reward_initial = tf.stack(
-                [
-                    reward,
-                    initial * self.initial_flow
-                ]
-            )
-            loss = self.compiled_loss(FlowMu, reward_initial, regularization_losses=self.losses)
+            Flow = self(tf.reshape(self.paths,shape=(-1,self.embedding_dim)))
+            Flow = tf.reshape(Flow,shape=(-1,2))
+            nu = tf.reshape(self.density,shape=(-1,))
+            loss = self.compiled_loss(Flow, nu, regularization_losses=self.losses)
         trainable_vars = self.trainable_variables
         gradients = tape.gradient(loss, trainable_vars)
         a = zip(gradients, trainable_vars)
         self.optimizer.apply_gradients(a)
         self.loss_val.assign(loss)
         return {'flow_init' : self.initial_flow,'loss':loss}
-
-
-    def gen_path_aux_2(self,initial_pos, delta=1e-8, exploration=1e-1):
-        batch_size = int(initial_pos.shape[0])
-        paths = np.zeros((batch_size,self.path_length,self.embedding_dim),dtype='float32')
-        paths_actions = np.zeros((batch_size, self.path_length, self.graph.nactions),dtype='float32')
-        paths[:, 0] = initial_pos
-        for i in range(self.path_length - 1):
-            Fout = self.FlowEstimator(paths[:batch_size, i])
-            tot = tf.reduce_sum(Fout, axis=1, keepdims=True)
-            Fout = Fout + 1 / self.graph.nactions * tot * exploration
-            Fcum = tf.math.cumsum(Fout, axis=1)
-            Fcum = Fcum / tf.reshape(Fcum[:, -1], (-1, 1))
-            paths_actions[:, i + 1] = (tf.cast(tf.random.uniform((batch_size, 1)) <= Fcum, tf.float32))
-            paths_actions[:, i + 1] = (tf.concat([paths_actions[:, i + 1, :1],
-                                                           paths_actions[:, i + 1, 1:] - paths_actions[:,
-                                                                                              i + 1, :-1]], axis=1))
-            paths[:batch_size, i + 1] = (
-                tf.einsum('ia,ajk,ik->ij', paths_actions[:, i + 1], self.graph.actions,
-                          paths[:batch_size, i]))
-        return paths
-
-    def gen_true_path(self, delta=1e-8, initial='random'):
-        if initial=='random':
-            self.gen_path_aux(exploration=0)
-            paths = self.paths
-        else:
-            paths = self.gen_path_aux_2(initial,exploration=0)
-        batch_size, length = paths.shape[:2]
-        FIOR = self.FinOutReward(paths).numpy()
-        FIOR[:,2] = FIOR[:,0]-FIOR[:,1]
-        proba = np.zeros((batch_size, length))
-        proba[:, 0] = 1
-        for i in range(1, length):
-            proba[:, i] = proba[:, i - 1] * FIOR[:, i - 1, 1] / (
-                    delta + FIOR[:, i - 1, 1] + FIOR[:, i - 1, 2]
-            )
-        out = []
-        for i in range(batch_size):
-            alpha = np.random.uniform(0.5, 1)
-            for j in range(length):
-                if alpha> proba[i,j]:
-                    break
-            out.append(paths[i,:j])
-        print(proba)
-        return out

@@ -40,7 +40,7 @@ def Alog(x):
     return tf.math.log(1+tf.math.abs(x))
 
 
-def Alogsquare(alpha=2,delta=1e-3):
+def Alogsquare(alpha=2,delta=1.):
     @tf.function
     def aux(x):
         return tf.math.log(1+delta*tf.pow(tf.math.abs(x),alpha))
@@ -54,7 +54,8 @@ def Apower(alpha=0.5):
 def Bpower(alpha=0.5,beta=0.1,delta=1e-8):
     @tf.function
     def B(x, y):
-        return 1 + beta* tf.math.pow(delta + x + y,alpha)
+        # return tf.math.log(1 + beta*tf.math.abs(tf.math.pow(x,alpha) -tf.math.pow(y,alpha)))
+        return (1 + beta* tf.math.pow(delta + x + y,alpha))
     return B
 
 class divergence(tf.keras.losses.Loss):
@@ -64,11 +65,10 @@ class divergence(tf.keras.losses.Loss):
         self.delta = delta
 
     @tf.function
-    def call(self, FlowMu, reward_initial):
-        Fout = FlowMu[:, 1] + reward_initial[0]
-        Fin = FlowMu[:, 0] + reward_initial[1]
-        Mu = FlowMu[:, 2]
-        return tf.reduce_sum(Mu*self.g(tf.math.abs((self.delta+Fin) / (self.delta+Fout))))
+    def call(self, Flow,nu):
+        Fout = Flow[:, 1]
+        Fin = Flow[:, 0]
+        return tf.reduce_sum(nu*self.g(tf.math.abs((self.delta+Fin) / (self.delta+Fout))))
 
 class MeanABError(tf.keras.losses.Loss):
     def __init__(self, A=tf.math.square, B=lambda x,y: 1,name='plop',**kwargs):
@@ -77,8 +77,7 @@ class MeanABError(tf.keras.losses.Loss):
         self.B = B
 
     @tf.function
-    def call(self, FlowMu, reward_initial):
-        Fout = FlowMu[:, 1] + reward_initial[0]
-        Fin = FlowMu[:, 0] + reward_initial[1]
-        Mu = FlowMu[:, 2]
-        return tf.reduce_sum(Mu*self.A(Fout-Fin)*self.B(Fin, Fout))
+    def call(self, Flow, nu):
+        Fout = Flow[:, 1]
+        Fin = Flow[:, 0]
+        return tf.reduce_sum(nu*self.A(Fout-Fin)*self.B(Fin, Fout))

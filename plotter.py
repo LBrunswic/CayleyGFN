@@ -67,7 +67,7 @@ def plot(to_plot = [] ,in_folder='tests', dest_folder='results/',file_name='Erro
         for j in range(n_graph):
             axs[i].plot(x, all[i][j], color=c1(j), label=to_plot[j].replace('_','-'))
     axs[0].legend(fancybox=True, shadow=True, ncol=1)
-    fig.tight_layout()
+    # fig.tight_layout()
     plt.savefig(os.path.join(dest_folder,image_name),dpi=300)
     plt.clf()
     return ERhat,ERbar,loss,init,totR,MaxR
