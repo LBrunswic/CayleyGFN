@@ -75,18 +75,18 @@ class GFlowCayleyLinear(tf.keras.Model):
             ),
             trainable=False
         )
-        print(self.FIOR.dtype)
+        # print(self.FIOR.dtype)
 
         self.forward_edges = tf.Variable(
             tf.zeros((self.batch_size*self.batch_memory,self.path_length,1+self.nactions,self.embedding_dim)),
             trainable=False
         )
-        print(self.forward_edges.dtype)
+        # print(self.forward_edges.dtype)
         self.backward_edges = tf.Variable(
             tf.zeros((self.batch_size*self.batch_memory,self.path_length,1+self.nactions,self.embedding_dim)),
             trainable=False
         )
-        print(self.backward_edges.dtype)
+        # print(self.backward_edges.dtype)
         self.state_batch_size=self.batch_size*self.batch_memory,self.path_length
         self.density_one = tf.constant(tf.ones_like(self.density))
     @tf.function
