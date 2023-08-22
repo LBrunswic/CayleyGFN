@@ -5,3 +5,4 @@ gpu_stat
 tests/*
 logs/*
 results/*
+archives/*

@@ -7,7 +7,6 @@ from multiprocessing import Process,active_children
 import subprocess
 from utils import extract
 import logging
-from plot import show
 import numpy as np
 
 GPUS = [0]
@@ -114,9 +113,3 @@ for param in TODO:
                 break
         if not done:
             logger.info('no GPU available, we retry later')
-# while:
-sleep(10)
-try:
-    show(threshold=np.arange(500)/100,VARIABLE={key:VARIABLE_LIST[0][key] for key in VARIABLE_LIST[0] if key not in ['seed']},averaging_width=1)
-except:
-    print('failed')

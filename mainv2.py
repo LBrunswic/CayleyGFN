@@ -151,7 +151,9 @@ reward_fn_dic = {
     'R_first_one': R_first_one,
     'RubicksCube': R_first_one,
     'R_first_k': R_first_k,
+    'TwistedManhattan':lambda size,width,scale,factor:TwistedManhattan(size,width=width,scale=scale,factor=factor),
 }
+
 key = REWARD.split(',')[0]
 param = [eval(x) for x in REWARD.split(',')[1:]]
 if HEURISTIC:
@@ -238,6 +240,12 @@ cp_callback = tf.keras.callbacks.ModelCheckpoint(
     save_freq=STEP_PER_EPOCH
     )
 
+if SIZE<=10:
+    from itertools import permutations
+    states = np.array(list(permutations(np.arange(SIZE)))).astype('float32')
+    total_R = flow.reward(states)
+    with open(os.path.join(folder,'total_R'),'wb') as f:
+        np.save(f,total_R)
 
 Replay = ReplayBuffer(
     model=flow,

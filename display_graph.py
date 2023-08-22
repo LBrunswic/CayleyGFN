@@ -10,7 +10,6 @@ from GFlowBase.losses import *
 from GFlowBase.rewards import *
 from Groups.symmetric_groups import random_perm
 from metrics import FollowInitLoss, plot,ReplayBuffer
-
 def edgeflow(FOLDER):
     # FOLDER = sys.argv[1]
     # FOLDER = 'tests/graphS3_5'
@@ -27,6 +26,7 @@ def edgeflow(FOLDER):
         if key not in HP:
             HP[key] = default[key]
     print(HP)
+    SIZE = HP['size']
     G = Symmetric(
         HP['size'],
         Gen=HP['generators'],
@@ -47,7 +47,7 @@ def edgeflow(FOLDER):
             },
             'kernel_options': {
                 'activation': tf.keras.layers.LeakyReLU(),
-                'kernel_initializer' : tf.keras.initializers.HeNormal(),
+                # 'kernel_initializer' : tf.keras.initializers.HeNormal(),
             }
         }
 
@@ -58,10 +58,13 @@ def edgeflow(FOLDER):
         'R_first_one': R_first_one,
         'RubicksCube': R_first_one,
         'R_first_k': R_first_k,
+        'TwistedManhattan':lambda size,width,scale,factor:TwistedManhattan(size,width=width,scale=scale,factor=factor),
     }
     key = HP['reward'].split(',')[0]
-    param = [eval(x) for x in HP['reward'].split(',')[1:]]
-    if HP['heuristic']:
+    # SIZE = HP['size']
+    # print('SIZE',SIZE)
+    param = [eval(x,{'SIZE':SIZE}) for x in HP['reward'].split(',')[1:]]
+    if 'heuristic' in HP  and HP['heuristic']:
         if HP['heuristic']<=HP['size']:
             heuristic_fn = Manhattan(HP['size'],width=HP['heuristic'])
         else:
@@ -92,7 +95,8 @@ def edgeflow(FOLDER):
     train_batch_size = HP['batchsize']
     X = tf.zeros((train_batch_size,(1+G.nactions),flow.embedding_dim))
     flow(X)
-    flow.load_weights(os.path.join(FOLDER,'model1000.ckpt'))
+    n = max([int(x.split('.')[0].split('model')[1]) for x in os.listdir(FOLDER) if 'ckpt' in x])
+    flow.load_weights(os.path.join(FOLDER,'model%s.ckpt') % n).expect_partial()
     # flow.load_weights(os.path.join(FOLDER,'model.ckpt'))
 
     flow2 = GFlowCayleyLinear(
