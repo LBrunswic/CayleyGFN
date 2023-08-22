@@ -223,6 +223,7 @@ Scheduler = [
 loss_fn_dic = {
     'powB': lambda alphaA,alphaB,betaB:MeanABError(A=Apower(alphaA),B=Bpower(alphaB,betaB)),
     'AlogsquareB': lambda alphaA,alphaB,betaB:MeanABError(A=Alogsquare(alphaA),B=Bpower(alphaB,betaB)),
+    'AlogsquareBdelta': lambda alphaA,alphaB,betaB,deltaB:MeanABError(A=Alogsquare(alphaA),B=Bpower(alpha=alphaB,beta=betaB,delta=delta)),
     'pow': lambda alphaA:MeanABError(A=Apower(alphaA)),
     'Bengio':lambda :divergence(),
 }
