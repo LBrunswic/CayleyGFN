@@ -82,4 +82,9 @@ class MeanABError(tf.keras.losses.Loss):
         Foutstar = Flow[:,:, 1]
         Finit = Flow[:,:, 2]
         R =  Flow[:,:, 3]
-        return tf.reduce_mean(tf.reduce_sum(nu*self.A(Foutstar+R-Finstar-Finit)*self.B(Finstar, Foutstar),axis=-1))
+        density_fixed = nu[0]
+        density_trainable = nu[1]
+        Ldelta = tf.reduce_mean(tf.reduce_sum(density_fixed*self.A(Foutstar+R-Finstar-Finit)*self.B(Finstar, Foutstar),axis=-1))
+        Ebigtau = tf.reduce_mean(density_trainable[:,-1])
+        # Ebigtau = 0.
+        return Ldelta+Ebigtau

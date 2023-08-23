@@ -191,7 +191,7 @@ class GFlowCayleyLinear(tf.keras.Model):
         delta = 1.
         with tf.GradientTape() as tape:
             Flow = self(tf.reshape(self.paths,shape=(-1,self.embedding_dim)))
-            nu = self.density
+            nu = tf.stack([self.density,self.density_foo(exploration=0.)])
             loss = self.compiled_loss(Flow, nu, regularization_losses=self.losses)
         trainable_vars = self.trainable_variables
         gradients = tape.gradient(loss, trainable_vars)

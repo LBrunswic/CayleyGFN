@@ -97,7 +97,7 @@ for param in TODO:
                 used, total = gpu_usage[gpu]
             except:
                 break
-            print(used,total,2**param['memory_limit']+2**10,end='')
+            print(used,total,2**param['memory_limit']+2**10,end='\r')
             if total-used>2**param['memory_limit']+2**10:
                 print()
                 param['gpu'] = gpu

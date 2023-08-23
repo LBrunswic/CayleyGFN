@@ -4,17 +4,22 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import pandas
 from datetime import datetime
+import sys
 A = extract()
-
+# A = extract(TESTS_FOLDER='archives/tests_S5TwistedMan5')
+# print('dqwdqwdqw',len(A))
 timestamp = datetime.now()
+#
+L = ['graphS5_%s' % i for i in range(0,2048)]
+A = {x:A[x] for x in A if A[x]['done'] and x in L and A[x]['param']['LR']==0.001 }
 
-L = ['graphS5_%s' % i for i in range(0,96)]
-A = {x:A[x] for x in A if A[x]['done'] and x in L}
 HP = set()
 for x in A:
     HP=HP.union(list(A[x]['param']))
 
 
+
+# data  = pandas.read_pickle('graphS5_TM5')
 data = {
     'HP_'+x:np.array([],dtype=str)
     for x in HP
@@ -70,8 +75,6 @@ for x in A:
         ])
 
 diff = ['loss']
-
-
 data['diff'] = data['HP_' + diff[0]].copy()
 for x in diff[1:]:
     data['diff'] = np.char.add(data['diff'],np.full_like(data['diff'],'_'))
@@ -84,7 +87,7 @@ print(data)
 
 # raise
 
-# sns.set_theme(style="darkgrid")
+sns.set_theme(style="darkgrid")
 cmap = sns.color_palette("Spectral", as_cmap=True)
 fig, axs = plt.subplots(nrows=2,ncols=2,figsize=(32,18))
 a = sns.lineplot(
@@ -136,11 +139,11 @@ sns.move_legend(
 a.get_figure().savefig('results/a_%s.png' % timestamp)
 
 
-
+cmp = sns.color_palette("Spectral")
 sns.set_theme(style="ticks")
 fig, axs = plt.subplots(figsize=(32,18))
 col_choice = np.zeros(34,bool)
 col_choice[-10:] = True
 col_choice[-6:-3] = False
-b = sns.pairplot(data=data.loc[:,col_choice], hue='diff')
+b = sns.pairplot(data=data.loc[:,col_choice], hue='diff',markers='.',palette='husl')
 b.savefig('results/b_%s.png' % timestamp)

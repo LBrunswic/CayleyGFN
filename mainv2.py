@@ -12,8 +12,9 @@ if GPU>=0:
     gpus = tf.config.list_physical_devices('GPU')
     print(gpus)
     tf.config.set_visible_devices(gpus[GPU], 'GPU')
-    tf.config.experimental.set_virtual_device_configuration(gpus[GPU], [
-        tf.config.experimental.VirtualDeviceConfiguration(memory_limit=MEMORY_LIMIT)])
+    tf.config.experimental.set_memory_growth(gpus[GPU], True)
+    # tf.config.experimental.set_virtual_device_configuration(gpus[GPU], [
+    #     tf.config.experimental.VirtualDeviceConfiguration(memory_limit=MEMORY_LIMIT)])
     logical_gpus = tf.config.list_logical_devices('GPU')
     print('done!',logical_gpus)
   except Exception as e:
