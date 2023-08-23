@@ -126,10 +126,12 @@ FlowEstimator_options = {
             'width' : MLP_WIDTH,
             # 'final_activation' : tf.keras.layers.LeakyReLU(),
             'final_activation' : 'linear',
+            # 'final_activation' : tf.math.abs,
             # 'final_activation' : 'sigmoid',
             # 'final_activation' : 'swish',
             # 'final_activation' : lambda x: 5*tf.math.tanh(x),
             'encoding':ENCODING,
+            # 'softmax_head': False
         },
         'kernel_options': {
             'activation': tf.keras.layers.LeakyReLU(),
@@ -223,7 +225,7 @@ Scheduler = [
 loss_fn_dic = {
     'powB': lambda alphaA,alphaB,betaB:MeanABError(A=Apower(alphaA),B=Bpower(alphaB,betaB)),
     'AlogsquareB': lambda alphaA,alphaB,betaB:MeanABError(A=Alogsquare(alphaA),B=Bpower(alphaB,betaB)),
-    'AlogsquareBdelta': lambda alphaA,alphaB,betaB,deltaB:MeanABError(A=Alogsquare(alphaA),B=Bpower(alpha=alphaB,beta=betaB,delta=delta)),
+    'AlogsquareBdelta': lambda alphaA,alphaB,betaB,deltaB:MeanABError(A=Alogsquare(alphaA),B=Bpower(alpha=alphaB,beta=betaB,delta=deltaB)),
     'pow': lambda alphaA:MeanABError(A=Apower(alphaA)),
     'Bengio':lambda :divergence(),
 }
@@ -231,6 +233,8 @@ key = LOSS.split(',')[0]
 param = [eval(x) for x in LOSS.split(',')[1:]]
 flow.compile(
     optimizer=tf.keras.optimizers.Adam(learning_rate=LR),
+    # optimizer=tf.keras.optimizers.Adam(learning_rate=LR),
+    # optimizer=tf.keras.optimizers.SGD(learning_rate=LR),
     loss=loss_fn_dic[key](*param)
 )
 

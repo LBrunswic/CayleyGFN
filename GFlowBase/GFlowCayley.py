@@ -115,8 +115,10 @@ class GFlowCayleyLinear(tf.keras.Model):
         Fout = tf.reshape(
             tf.reduce_sum(F,axis=1),
             shape=(self.batch_size*self.batch_memory,self.path_length,1)
-        ) + tf.reshape(self.paths_reward,shape=(self.batch_size*self.batch_memory,self.path_length,1))
-        Fin = tf.ones_like(Fout)*self.initial_flow
+        )
+        R = tf.reshape(self.paths_reward,shape=(self.batch_size*self.batch_memory,self.path_length,1))
+        Finit = tf.ones_like(Fout)*self.initial_flow
+        Fin = tf.zeros_like(Fout)
         for i in tf.range(0, nactions, 1):
             Fin += tf.reshape(
                 self.FlowEstimator(
@@ -127,7 +129,7 @@ class GFlowCayleyLinear(tf.keras.Model):
                 )[:,i],
                 shape=(self.batch_size*self.batch_memory,self.path_length,1)
             )
-        Flow = tf.concat([Fin,Fout],axis=-1)
+        Flow = tf.concat([Fin,Fout,Finit, R],axis=-1)
         return Flow # (batch_size*path_length,2)
 
     @tf.function
@@ -172,24 +174,14 @@ class GFlowCayleyLinear(tf.keras.Model):
     @tf.function
     def FinOutReward_foo(self):
         batch_size,length = self.paths.shape[:2]
-        FinFout = tf.reshape(
-            self(tf.reshape(self.paths, shape=(-1,self.embedding_dim))),
-            shape=(batch_size,length,2)
-        )
-        # R = tf.reshape(self.reward(tf.reshape(paths,shape=(-1,self.embedding_dim))),shape=(batch_size,length,1))
-        R = tf.reshape(self.paths_reward,shape=(batch_size,length,1))
-        return tf.concat([FinFout,R],axis=-1)
+        FinFoutInitR = self(tf.reshape(self.paths, shape=(-1,self.embedding_dim)))
+        return tf.concat([FinFoutInitR[:,:,:2],FinFoutInitR[:,:,-1:]],axis=-1)
 
     @tf.function
     def FinOutReward(self):
         batch_size,length = self.paths.shape[:2]
-        FinFout = tf.reshape(
-            self(tf.reshape(self.paths, shape=(-1,self.embedding_dim))),
-            shape=(batch_size,length,2)
-        )
-        # R = tf.reshape(self.reward(tf.reshape(paths,shape=(-1,self.embedding_dim))),shape=(batch_size,length,1))
-        R = tf.reshape(self.paths_reward,shape=(batch_size,length,1))
-        self.FIOR.assign(tf.concat([FinFout,R],axis=-1))
+        FinFoutInitR = self(tf.reshape(self.paths, shape=(-1,self.embedding_dim)))
+        self.FIOR.assign(tf.concat([FinFoutInitR[:,:,:2],FinFoutInitR[:,:,-1:]],axis=-1))
 
 
     @tf.function
@@ -199,8 +191,7 @@ class GFlowCayleyLinear(tf.keras.Model):
         delta = 1.
         with tf.GradientTape() as tape:
             Flow = self(tf.reshape(self.paths,shape=(-1,self.embedding_dim)))
-            Flow = tf.reshape(Flow,shape=(-1,2))
-            nu = tf.reshape(self.density,shape=(-1,))
+            nu = self.density
             loss = self.compiled_loss(Flow, nu, regularization_losses=self.losses)
         trainable_vars = self.trainable_variables
         gradients = tape.gradient(loss, trainable_vars)

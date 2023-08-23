@@ -78,6 +78,8 @@ class MeanABError(tf.keras.losses.Loss):
 
     @tf.function
     def call(self, Flow, nu):
-        Fout = Flow[:, 1]
-        Fin = Flow[:, 0]
-        return tf.reduce_sum(nu*self.A(Fout-Fin)*self.B(Fin, Fout))
+        Finstar = Flow[:,:, 0]
+        Foutstar = Flow[:,:, 1]
+        Finit = Flow[:,:, 2]
+        R =  Flow[:,:, 3]
+        return tf.reduce_mean(tf.reduce_sum(nu*self.A(Foutstar+R-Finstar-Finit)*self.B(Finstar, Foutstar),axis=-1))
