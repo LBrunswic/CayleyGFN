@@ -26,7 +26,12 @@ def edgeflow(FOLDER):
         if key not in HP:
             HP[key] = default[key]
     print(HP)
+    print(type(HP))
+    HEURISTIC = HP['heuristic']
+    REWARD = HP['reward']
     SIZE = HP['size']
+    BATCH_SIZE = HP['batchsize']
+    BATCH_MEMORY = HP['batch_memory']
     G = Symmetric(
         HP['size'],
         Gen=HP['generators'],
@@ -53,44 +58,38 @@ def edgeflow(FOLDER):
 
 
 
+
+
     reward_fn_dic = {
         'Manhattan': lambda size,width:Manhattan(size,width=width),
         'R_first_one': R_first_one,
         'RubicksCube': R_first_one,
         'R_first_k': R_first_k,
         'TwistedManhattan':lambda size,width,scale,factor:TwistedManhattan(size,width=width,scale=scale,factor=factor),
+        'R_zero':R_zero,
     }
-    key = HP['reward'].split(',')[0]
-    # SIZE = HP['size']
-    # print('SIZE',SIZE)
-    param = [eval(x,{'SIZE':SIZE}) for x in HP['reward'].split(',')[1:]]
-    if 'heuristic' in HP  and HP['heuristic']:
-        if HP['heuristic']<=HP['size']:
-            heuristic_fn = Manhattan(HP['size'],width=HP['heuristic'])
-        else:
-            heuristic_fn = TwistedManhattan(
-                HP['size'],
-                width=HP['heuristic']-HP['size'],
-                scale=HP['heuristic_param'],
-                factor=HP['heuristic_scale']
-            )
 
+    key = REWARD.split(',')[0]
+    param = [eval(x.replace('SIZE',str(HP['size']))) for x in REWARD.split(',')[1:]]
+    reward_fn = reward_fn_dic[key](HP['size'],*param)
 
-    else:
-        heuristic_fn = R_zero(HP['size'])
+    print('HP',eval("HP['size']"))
+    key = HEURISTIC.split(',')[0]
+    param = [eval(x.replace('SIZE',str(HP['size']))) for x in HEURISTIC.split(',')[1:]]
+    heuristic_fn = reward_fn_dic[key](HP['size'],*param)
 
 
     flow = GFlowCayleyLinear(
         graph=G,
         reward=Reward(
-            reward_fn=reward_fn_dic[key](HP['size'],*param),
+            reward_fn=reward_fn,
             heuristic_fn=heuristic_fn,
         ),
         batch_size=HP['batchsize'],
         batch_memory=HP['batch_memory'],
         FlowEstimatorGen=(FlowEstimator[0], FlowEstimator_options),
         length_cutoff_factor=HP['length_cutoff_factor'],
-
+        initflow=HP['initflow']
     )
     train_batch_size = HP['batchsize']
     X = tf.zeros((train_batch_size,(1+G.nactions),flow.embedding_dim))
@@ -102,7 +101,7 @@ def edgeflow(FOLDER):
     flow2 = GFlowCayleyLinear(
         graph=G,
         reward=Reward(
-            reward_fn=reward_fn_dic[key](HP['size'],*param),
+            reward_fn=heuristic_fn,
             heuristic_fn=heuristic_fn,
         ),
         batch_size=HP['batchsize']*4,

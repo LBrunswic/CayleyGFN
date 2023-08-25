@@ -164,12 +164,18 @@ class GFlowCayleyLinear(tf.keras.Model):
         self.density.assign(tf.math.cumprod(p,exclusive=True,axis=1))
 
     @tf.function
-    def density_foo(self,delta=1e-8,exploration=1e-1):
+    def density_foo(self,delta=1e-8,exploration=0.):
         FIOR = self.FinOutReward_foo()
         p = FIOR[:,:, 1] / (
             delta+FIOR[:, :, 1] + FIOR[:, :, 2]
         )
         return tf.math.cumprod(p,exclusive=True,axis=1)
+    @tf.function
+    def logdensity_foo(self,delta=1e-8,exploration=0.):
+        FIOR = self.FinOutReward_foo()
+        p = tf.math.log(delta+FIOR[:,:, 1])
+        p -= tf.math.log(delta+FIOR[:, :, 1] + FIOR[:, :, 2])
+        return tf.math.cumsum(p,axis=1)
 
     @tf.function
     def FinOutReward_foo(self):
@@ -183,6 +189,17 @@ class GFlowCayleyLinear(tf.keras.Model):
         FinFoutInitR = self(tf.reshape(self.paths, shape=(-1,self.embedding_dim)))
         self.FIOR.assign(tf.concat([FinFoutInitR[:,:,:2],FinFoutInitR[:,:,-1:]],axis=-1))
 
+    @tf.function
+    def meanphi(self,phi,paths,proba):
+        PHI = phi(tf.reshape(paths[:, :-1], (-1, paths.shape[-1])))
+        P = (proba[:, :-1] - proba[:, 1:])
+        return tf.reduce_mean(tf.reduce_sum(tf.reshape(PHI,paths[:,:-1].shape[:2]) * P,axis=1),axis=0)
+
+    @tf.function
+    def Rbar_Error(self,delta=1e-8):
+        RRbar = self.meanphi(self.reward, self.paths,self.density_foo())
+        RR = tf.reduce_sum(tf.math.square(self.paths_reward)) / tf.reduce_sum(self.paths_reward)
+        return tf.abs(RRbar-RR)/(delta+RR)
 
     @tf.function
     def train_step(self, data):
@@ -191,8 +208,8 @@ class GFlowCayleyLinear(tf.keras.Model):
         delta = 1.
         with tf.GradientTape() as tape:
             Flow = self(tf.reshape(self.paths,shape=(-1,self.embedding_dim)))
-            nu = tf.stack([self.density,self.density_foo(exploration=0.)])
-            loss = self.compiled_loss(Flow, nu, regularization_losses=self.losses)
+            nu = tf.stack([self.density,self.logdensity_foo(exploration=0.)])
+            loss = self.Rbar_Error()
         trainable_vars = self.trainable_variables
         gradients = tape.gradient(loss, trainable_vars)
         a = zip(gradients, trainable_vars)

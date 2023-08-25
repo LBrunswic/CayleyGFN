@@ -155,22 +155,23 @@ reward_fn_dic = {
     'RubicksCube': R_first_one,
     'R_first_k': R_first_k,
     'TwistedManhattan':lambda size,width,scale,factor:TwistedManhattan(size,width=width,scale=scale,factor=factor),
+    'R_zero':R_zero,
 }
 
 key = REWARD.split(',')[0]
 param = [eval(x) for x in REWARD.split(',')[1:]]
-if HEURISTIC:
-    if HEURISTIC<=SIZE:
-        heuristic_fn = Manhattan(SIZE,width=HEURISTIC)
-    else:
-        heuristic_fn = TwistedManhattan(SIZE,width=HEURISTIC-SIZE,scale=HEURISTIC_PARAM,factor=heuristic_scale)
-else:
-    heuristic_fn = R_zero(SIZE)
+reward_fn = reward_fn_dic[key](SIZE,*param)
+
+
+key = HEURISTIC.split(',')[0]
+param = [eval(x) for x in HEURISTIC.split(',')[1:]]
+heuristic_fn = reward_fn_dic[key](SIZE,*param)
+
 
 flow = GFlowCayleyLinear(
     graph=G,
     reward=Reward(
-        reward_fn=reward_fn_dic[key](SIZE,*param),
+        reward_fn=reward_fn,
         heuristic_fn=heuristic_fn,
     ),
     batch_size=BATCH_SIZE,

@@ -94,8 +94,8 @@ def Symmetric(n,Gen='trans_cycle_a', inverse = False,dtype='float32',k=1):
     direct_actions = np.zeros((len(generators),k*n,k*n))
     for i in range(len(generators)):
         direct_actions[i] = permutation_matrix(generators[i])
-    # random_gen = lambda b:random_perm(b,n)
-    random_gen = lambda b:random_perm_extremal(b,n)
+    random_gen = lambda b:random_perm(b,n)
+    # random_gen = lambda b:random_perm_extremal(b,n)
     # random_gen = lambda b: np.concatenate([random_perm_extremal(b//2,n),random_perm(b-b//2,n)])
     return CayleyGraphLinearEmb(initial,direct_actions,diameter,random_gen=random_gen,name='Sym%s_%s' % (n,Gen))
 

@@ -11,7 +11,13 @@ A = extract()
 timestamp = datetime.now()
 #
 L = ['graphS5_%s' % i for i in range(0,2048)]
-A = {x:A[x] for x in A if A[x]['done'] and x in L and A[x]['param']['LR']==0.001 }
+filter = {
+    'loss' : ['TwistedManhattan,SIZE,1e-5,1.'],
+    'MLP_width' : [32],
+    'MLP_depth' : [3],
+    'epochs': [100]
+}
+A = {x:A[x] for x in A if A[x]['done'] and x in L and all([A[x]['param'][y] in filter[y] for y in filter])}
 
 HP = set()
 for x in A:

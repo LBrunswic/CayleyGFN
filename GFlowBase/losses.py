@@ -70,6 +70,10 @@ class divergence(tf.keras.losses.Loss):
         Fin = Flow[:, 0]
         return tf.reduce_sum(nu*self.g(tf.math.abs((self.delta+Fin) / (self.delta+Fout))))
 
+@tf.function
+def fall(x):
+    return -1/x
+
 class MeanABError(tf.keras.losses.Loss):
     def __init__(self, A=tf.math.square, B=lambda x,y: 1,name='plop',**kwargs):
         super(MeanABError, self).__init__(name=name, **kwargs)
@@ -87,4 +91,4 @@ class MeanABError(tf.keras.losses.Loss):
         Ldelta = tf.reduce_mean(tf.reduce_sum(density_fixed*self.A(Foutstar+R-Finstar-Finit)*self.B(Finstar, Foutstar),axis=-1))
         Ebigtau = tf.reduce_mean(density_trainable[:,-1])
         # Ebigtau = 0.
-        return Ldelta+Ebigtau
+        return Ldelta+0.1^fall(Ebigtau)

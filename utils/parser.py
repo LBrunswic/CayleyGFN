@@ -149,9 +149,9 @@ def generate_argparser():
     parser.add_argument(
         "--heuristic",
         help="Heuristic",
-        default=0,
+        default='',
         dest="HEURISTIC",
-        type=int,
+        type=str,
     )
     parser.add_argument(
         "--heuristic_param",
