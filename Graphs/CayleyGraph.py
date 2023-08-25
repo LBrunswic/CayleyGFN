@@ -2,19 +2,19 @@ import numpy as np
 import itertools
 import tensorflow as tf
 from Groups.symmetric_groups import *
+from scipy.linalg import block_diag
 
 class CayleyGraphLinearEmb():
     def __init__(self,
-                 initial,
                  direct_actions,
                  diameter,
                  random_gen=None,
                  name='cayley_graph',
                  dtype='float32',
             ):
-        self.initial = tf.constant(initial,dtype=dtype)
-        self.embedding_dim = tf.constant(initial.shape[0]) # always a (p,)
+
         self.actions = tf.constant(direct_actions,dtype=dtype)
+        self.embedding_dim = tf.constant(direct_actions.shape[-1]) # always a (p,)
         self.nactions = len(direct_actions)
         self.reverse_actions = tf.constant(np.linalg.inv(direct_actions),dtype=dtype)
         self.dtype = dtype
@@ -30,134 +30,205 @@ class CayleyGraphLinearEmb():
     def __str__(self):
         return self.name
 
-def Symmetric(n,Gen='trans_cycle_a', inverse = False,dtype='float32',k=1):
-    def aux(sigma):
-        return np.unique(sigma,return_index=True)[1]
-    def permutation_matrix(sigma):
-        n = len(sigma)
-        P = np.zeros((n, n))
-        for i in range(n):
-            P[i, sigma[i]] = 1
 
-        S = np.zeros((k*n,k*n))
-        for i in range(k):
-            S[i*n:(i+1)*n,i*n:(i+1)*n] = P
-        return S
-    if k<n:
-        initial = np.arange(k*n)-k*n/2
-    elif k==n:
-        initial = np.eye(n).reshape(-1)
-    elif k==n+1:
-        initial = np.concatenate([np.eye(n).reshape(-1),np.arange(n)])
+SymmetricGenerators = {
+    'trans_cycle_a' : lambda n: ([[1,0]+list(range(2,n)), list(range(1,n))+[0]],[True,False],n),
+    'transpositions' : lambda n: ([list(range(i))+[i+1,i]+list(range(i+2,n)) for i in range(n-1)], [True]*(n-1),n),
+    'all' : lambda n: (list(itertools.permutations(list(range(n)))), [True]*np.math.factorial(n),1),
+    'Rubicks': rubick_generators
+}
+Representations = {
+    # name -> size ->  (morphism, dim)
+    'natural' : lambda n : (permutation_matrix,n),
+}
+RandomGenerators = {
+    # name -> batch_size -> size -> (batch_size,size)
+    'uniform': random_perm,
+    'uniform_extremal': random_perm_extremal,
+    'deterministic': lambda b,n : np.full((b,n),np.arange(n)),
+    'rubick': lambda b,n : rubick_random(b)
+}
 
-    if Gen == 'trans_cycle_a':
-        generators = [
-            [1,0]+list(range(2,n)),
-            list(range(1,n))+[0],
-        ]
-        if inverse:
-            generators.append(aux(generators[1]))
-        diameter = n
-    elif Gen == 'transpositions':
-        generators = [
-            list(range(i))+[i+1,i]+list(range(i+2,n))
-            for i in range(n-1)
-        ]
-        diameter = n
-    elif Gen == 'all':
-        generators = list(itertools.permutations(list(range(n))))
-        diameter = 1
-    elif Gen == '3_cycles':
-        generators = [
-            [1,2,0] + list(range(3, n)),
-            # [1,0,2] + list(range(3, n)),
-            list(range(1, n)) + [0],
-            # [n-1]+list(range(0, n-1)),
-        ]
-        if inverse:
-            generators.append(aux(generators[0]))
-            generators.append(aux(generators[1]))
-        diameter = int(n*np.log(1+n))
-    elif Gen == 'large_cycles':
-        p = 5
-        generators = [
-            list(range(0,i))+list(range(i+1,i+p)) + [i] + list(range(i+p,n))
-            for i in range(0,n-p,4)
-        ] + [list(range(0,n-p+1)) + list(range(n-p+2,n)) + [n-p+1]]
-        if inverse:
-            a = [aux(x) for x in generators]
-            generators += a
-        diameter = int(n)
-        print(generators)
-    else:
-        raise NotImplementedError('The set of generator is unknown')
-    direct_actions = np.zeros((len(generators),k*n,k*n))
-    for i in range(len(generators)):
-        direct_actions[i] = permutation_matrix(generators[i])
-    random_gen = lambda b:random_perm(b,n)
-    # random_gen = lambda b:random_perm_extremal(b,n)
-    # random_gen = lambda b: np.concatenate([random_perm_extremal(b//2,n),random_perm(b-b//2,n)])
-    return CayleyGraphLinearEmb(initial,direct_actions,diameter,random_gen=random_gen,name='Sym%s_%s' % (n,Gen))
+pi = np.math.pi
+Embeddings = {
+    'natural': lambda *args,**kwarg: lambda x : x,
+    'cos':  lambda n,*args,omega=1,**kwarg: lambda x :tf.math.cos(2*omega*pi*x/n),
+    'sin':  lambda n,*args,omega=1,**kwarg: lambda x :tf.math.sin(2*omega*pi*x/n),
+}
+
+def Symmetric(
+    n,
+    generators='trans_cycle_a',
+    representation = [('natural',{})],
+    inverse = False,
+    random_gen = 'uniform',
+    embedding = [('natural',{})],
+    dtype='float32'
+):
+    generators,involutions,diameter = SymmetricGenerators[generators](n)
+    if inverse:
+        inverse_generators = []
+        for i,gen in enumerate(generators):
+            if not involutions[i]:
+                inverse_generators.append(inversion(gen))
+        generators += inverse_generators
+
+    assert(len(representation)==len(embedding))
+
+    R_list = [Representations[rep](n) for rep in representation]
+    dim = sum([d for rho,d in R_list])
+    direct_actions = tf.cast(tf.stack([
+        block_diag(*[rho(gen) for rho,_ in R_list])
+        for gen in generators
+    ]),dtype)
+
+    E_list = [Embeddings[emb_choice](n,**emb_kwarg) for emb_choice,emb_kwarg in embedding]
+    @tf.function
+    def iota(x):
+         return tf.concat([emb(tf.cast(x,dtype)) for emb  in E_list],axis=-1)
+    random_gen = RandomGenerators[random_gen]
+    initial = lambda b: iota(random_gen(b,n))
+
+    return CayleyGraphLinearEmb(direct_actions,diameter,random_gen=initial,name='Sym%s_%s' % (n,generators))
+
+from pyvis.network import Network
+import networkx as nx
+from networkx.readwrite import json_graph
 
 
-def RubicksCube(width=3,Gen='default', inverse = False,dtype='float32',melange=200):
-    n = 48
-    def aux(sigma):
-        return np.unique(sigma,return_index=True)[1]
-    initial = np.arange(n)
-    if Gen == 'default':
-        generators = [
-            cycle_dec_to_array(n,sigma,start=1,dtype=int)
-            for sigma in [
-                [(1, 3, 8, 6),(2, 5, 7, 4),(9, 33, 25, 17),(10, 34, 26, 18),(11, 35, 27, 19)],
-                [(9, 11, 16, 14),(10, 13, 15, 12),(1, 17, 41, 40),(4, 20, 44, 37),(6, 22, 46, 35)],
-                [(17, 19, 24, 22),(18, 21, 23, 20),(6, 25, 43, 16),(7, 28, 42, 13),(8, 30, 41, 11)],
-                [(25, 27, 32, 30),(26, 29, 31, 28),(3, 38, 43, 19),(5, 36, 45, 21),(8, 33, 48, 24)],
-                [(33, 35, 40, 38),(34, 37, 39, 36),(3, 9, 46, 32),(2, 12, 47, 29),(1, 14, 48, 27)],
-                [(41, 43, 48, 46),(42, 45, 47, 44),(14, 22, 30, 38),(15, 23, 31, 39),(16, 24, 32, 40)],
-            ]
-        ]
-        if inverse:
-            generators.append(aux(generators[1]))
-        diameter = 20
-    else:
-        raise NotImplementedError('The set of generator is unknown')
-    direct_actions = np.zeros((len(generators),n,n),dtype='float32')
-    for i in range(len(generators)):
-        direct_actions[i] = permutation_matrix(generators[i])
+def graph_representation(n,generators_choice='transpositions',inverse=False,reward=lambda x:x[0]==0):
+    colors = ['blue','red','green','purple','black','cyan']
+    generators = SymmetricGenerators[generators_choice](n)[0]
+    if inverse:
+        for i,inv in enumerate(SymmetricGenerators[generators_choice](n)[1]):
+            if not inv:
+                generators.append(inversion(generators[i]))
     generators = np.array(generators)
-    def random_gen(batch_size):
-        base = np.full((batch_size,n),np.arange(n))
-        indices = np.arange(len(generators),dtype=int)
-        def kernel(x):
-            c = np.random.choice(indices,size=batch_size)
-            I = generators[c]
-            return x[np.arange(batch_size).reshape(-1,1),I]
-        for i in range(melange):
-            base = kernel(base)
-        return base
-    return CayleyGraphLinearEmb(initial,direct_actions,diameter,random_gen=random_gen,name='Sym%s_%s' % (n,Gen))
-#
-#
-# def build_representation(G):
-#     def aux(x):
-#         return str(list(tf.cast(x,tf.int32).numpy()))
-#     def aux2(x):
-#         return tf.convert_to_tensor(eval(x),dtype='float32')
-#     dot = graphviz.Digraph(comment=G.name,strict=True,format='png')
-#     node_explored = []
-#     node_unexplored = []
-#     node_unexplored.append(aux(G.initial))
-#     Sa = aux(G.initial)
-#     dot.node(Sa, Sa)
-#     while node_unexplored:
-#         Sa = node_unexplored.pop()
-#         node_explored.append(Sa)
-#         Next = list(tf.einsum('ijk,k->ij',G.actions,aux2(Sa)))
-#         for s in Next:
-#             sa = aux(s)
-#             if sa not in node_explored + node_unexplored:
-#                 dot.node(sa)
-#                 node_unexplored.append(sa)
-#             dot.edge(Sa,sa)
-#     return dot,node_explored
+    def iter(base,g,N):
+        old = [tuple(x) for x in base]
+        new = [tuple(x) for x in base[...,g].reshape(-1,N)]
+        return np.array(list(set(old+new)))
+
+    base = np.arange(n).reshape(1,-1)
+    oldshape=0
+    while True:
+        base = iter(base,generators,n)
+        if oldshape == base.shape:
+            break
+        else:
+            oldshape = base.shape
+    net = nx.DiGraph()
+    # net = Network('1000px','2000px',is_directed=True)
+    def name(x):
+        return ''.join([str(u) for u in x])
+    for x in base:
+        net.add_node(name(x), size=20, color=colors[reward(x)])
+    for x in base:
+        for i,y in enumerate(x[generators]):
+            net.add_edge(name(x),name(y),color=colors[i])
+
+    nx.nx_pydot.write_dot(net,'plop.dot')
+    with open('plop.dot','r') as f:
+        dot = ' '.join(f.readlines())
+    template = """
+        <!DOCTYPE html>
+    <html lang="en">
+      <head>
+        <title> Graph </title>
+
+        <script
+          type="text/javascript"
+          src="vis.js"
+        ></script>
+
+        <style type="text/css">
+          #mynetwork {
+            width: 2200px;
+            height: 1400px;
+            border: 3px solid lightgray;
+          }
+        </style>
+      </head>
+      <body>
+        <div id="mynetwork"></div>
+        <script type="text/javascript">
+          // create an array with nodes
+
+
+          // create a network
+          var container = document.getElementById("mynetwork");
+          var dot = "%s";
+          var options = {};
+          var data = vis.parseDOTNetwork(dot);
+          var network = new vis.Network(container, data, options);
+        </script>
+      </body>
+    </html>
+    """
+    with open('graph.html','w') as f:
+        f.write(template % dot.replace('\n',''))
+    return net
+
+
+from itertools import permutations
+import matplotlib as mpl
+def path_representation(paths,reward=lambda x:x[0]==0):
+    cmap = mpl.colormaps['turbo']
+    colors = ['blue','red','green','yellow','cyan']
+    batch_size, length,n= paths.shape
+    net = nx.MultiDiGraph()
+    if batch_size>len(colors):
+        NotImplementedError('too many paths to draw')
+
+    def name(x):
+        return ''.join([str(u) for u in x])
+
+    for x in permutations(np.arange(n,dtype=int)):
+        net.add_node(name(x), size=20, color=colors[reward(x)])
+    for i,path  in enumerate(paths):
+        for t in range(length-1):
+            x = path[t]
+            y = path[t+1]
+            net.add_edge(name(x),name(y),color=colors[i])
+
+    nx.nx_pydot.write_dot(net,'plop.dot')
+    with open('plop.dot','r') as f:
+        dot = ' '.join(f.readlines())
+    template = """
+        <!DOCTYPE html>
+    <html lang="en">
+      <head>
+        <title> Graph </title>
+
+        <script
+          type="text/javascript"
+          src="vis.js"
+        ></script>
+
+        <style type="text/css">
+          #mynetwork {
+            width: 2200px;
+            height: 1400px;
+            border: 3px solid lightgray;
+          }
+        </style>
+      </head>
+      <body>
+        <div id="mynetwork"></div>
+        <script type="text/javascript">
+          // create an array with nodes
+
+
+          // create a network
+          var container = document.getElementById("mynetwork");
+          var dot = "%s";
+          var options = {};
+          var data = vis.parseDOTNetwork(dot);
+          var network = new vis.Network(container, data, options);
+        </script>
+      </body>
+    </html>
+    """
+    with open('graph.html','w') as f:
+        f.write(template % dot.replace('\n',''))
+    return net
