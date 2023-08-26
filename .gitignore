@@ -1,6 +1,10 @@
 *.log
 *.pyc
 *.png
+*.dot
+*.json
+*.html
+*.js
 gpu_stat
 tests/*
 logs/*

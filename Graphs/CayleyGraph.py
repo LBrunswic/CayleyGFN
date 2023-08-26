@@ -174,7 +174,7 @@ from itertools import permutations
 import matplotlib as mpl
 def path_representation(paths,reward=lambda x:x[0]==0):
     cmap = mpl.colormaps['turbo']
-    colors = ['blue','red','green','yellow','cyan']
+    colors = ['gold','blue','red','green','yellow','cyan']
     batch_size, length,n= paths.shape
     net = nx.MultiDiGraph()
     if batch_size>len(colors):

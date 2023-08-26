@@ -188,7 +188,7 @@ class ReplayBuffer(tf.keras.callbacks.Callback):
     def on_train_begin(self, logs=None):
         T = time()
         self.model.update_training_distribution(exploration=self.exploration)
-        self.model.build_input()
+        
         if self.logger is not None:
             self.logger.info('Path gen : %s seconds' % (time()-T))
 
