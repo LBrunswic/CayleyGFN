@@ -7,26 +7,39 @@ from scipy.linalg import block_diag
 class CayleyGraphLinearEmb():
     def __init__(self,
                  direct_actions,
+                 inverse_actions,
                  diameter,
+                 embedding=None,
                  random_gen=None,
+                 group_dim=None,
+                 embedding_dim=None,
                  name='cayley_graph',
-                 dtype='float32',
+                 group_dtype='int32',
+                 representation_dtype='float32',
             ):
 
-        self.actions = tf.constant(direct_actions,dtype=dtype)
-        self.embedding_dim = tf.constant(direct_actions.shape[-1]) # always a (p,)
         self.nactions = len(direct_actions)
-        self.reverse_actions = tf.constant(np.linalg.inv(direct_actions),dtype=dtype)
-        self.dtype = dtype
+        self.actions = tf.constant(direct_actions,dtype=group_dtype)
+        print(self.actions)
+
+        self.reverse_actions = tf.constant(inverse_actions,dtype=group_dtype)
+        print(self.reverse_actions)
+
+        self.group_dim = group_dim
+        self.embedding_dim = tf.constant(embedding_dim) # always a (p,)
+        self.group_dtype = group_dtype
+        self.representation_dtype = representation_dtype
+
+
         self.name = name
         self.diameter = diameter
         self.random_gen = random_gen
+        self.embedding = embedding
 
     def random(self, batch_size):
-        if self.random_gen is None:
-            return tf.convert_to_tensor(np.full((batch_size, self.embedding_dim), self.initial))
-        else:
-            return self.random_gen(batch_size)
+        initial_position = self.random_gen(batch_size)
+        return initial_position
+
     def __str__(self):
         return self.name
 
@@ -50,10 +63,16 @@ RandomGenerators = {
 }
 
 pi = np.math.pi
+def hot(n,*args,omega=1,**kwarg):
+    Id = tf.eye(n)
+    def aux(paths):
+        return tf.cast(tf.reshape(tf.gather(Id,paths),(*paths.shape[:-1], n*n,) ),'float32')
+    return aux,n*n
 Embeddings = {
-    'natural': lambda *args,**kwarg: lambda x : x,
-    'cos':  lambda n,*args,omega=1,**kwarg: lambda x :tf.math.cos(2*omega*pi*x/n),
-    'sin':  lambda n,*args,omega=1,**kwarg: lambda x :tf.math.sin(2*omega*pi*x/n),
+    'natural': lambda n,*args,**kwarg: (lambda x : x,n),
+    'cos': lambda n,*args,omega=1,**kwarg: (lambda x :tf.math.cos(2*omega*pi*tf.cast(x,'float32')/n),n),
+    'sin': lambda n,*args,omega=1,**kwarg: (lambda x :tf.math.sin(2*omega*pi*tf.cast(x,'float32')/n),n),
+    'hot': hot
 }
 
 def Symmetric(
@@ -73,23 +92,27 @@ def Symmetric(
                 inverse_generators.append(inversion(gen))
         generators += inverse_generators
 
-    assert(len(representation)==len(embedding))
+    R_list = [Representations[rep](n) for rep,options in representation]
 
-    R_list = [Representations[rep](n) for rep in representation]
-    dim = sum([d for rho,d in R_list])
     direct_actions = tf.cast(tf.stack([
         block_diag(*[rho(gen) for rho,_ in R_list])
         for gen in generators
-    ]),dtype)
+    ]),'int32')
+    inverse_actions = tf.cast(tf.stack([
+        block_diag(*[rho(inversion(gen)) for rho,_ in R_list])
+        for gen in generators
+    ]),'int32')
+
 
     E_list = [Embeddings[emb_choice](n,**emb_kwarg) for emb_choice,emb_kwarg in embedding]
+    embedding_dim = sum([d for _,d in E_list])
     @tf.function
     def iota(x):
-         return tf.concat([emb(tf.cast(x,dtype)) for emb  in E_list],axis=-1)
-    random_gen = RandomGenerators[random_gen]
-    initial = lambda b: iota(random_gen(b,n))
+         return tf.concat([emb(x) for emb,_  in E_list],axis=-1)
+    random_fn = lambda b: RandomGenerators[random_gen](b,n)
 
-    return CayleyGraphLinearEmb(direct_actions,diameter,random_gen=initial,name='Sym%s_%s' % (n,generators))
+
+    return CayleyGraphLinearEmb(direct_actions,inverse_actions,diameter,random_gen=random_fn,embedding=iota,embedding_dim=embedding_dim, group_dim=n, name='Sym%s_%s' % (n,generators))
 
 from pyvis.network import Network
 import networkx as nx

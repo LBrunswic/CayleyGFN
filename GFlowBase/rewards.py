@@ -5,27 +5,26 @@ import sys, os
 from time import time
 
 
+
 def R_zero(*arg,**kwarg):
+    @tf.function
     def R(x):
-        return np.zeros(x.shape[0],dtype='float32')
+        return tf.zeros(x.shape[0],dtype='float32')
     return R
+
 
 def R_one(*arg,dtype= tf.float32,**kwarg):
+    @tf.function
     def R(x):
-        return np.ones(x.shape[0],dtype='float32')
-    return R
-
-def R_first_one(scale,*arg,dtype= tf.float32,**kwarg):
-
-    def R(x):
-        return scale*tf.cast(x[:,0]==1,dtype)
+        return tf.ones(x.shape[0],dtype='float32')
     return R
 
 
 def R_first_k(scale,k,*arg,dtype= tf.float32,**kwarg):
     target =  tf.constant(np.arange(k).reshape(1,-1),dtype=dtype)
+    @tf.function
     def R(x):
-        return scale*tf.nn.relu(1-2*tf.norm(x[:,:k]-target,ord=1,axis=1))
+        return scale*tf.nn.relu(1-2*tf.norm(tf.cast(x[:,:k],'float32')-target,ord=1,axis=1))
     return R
 
 
@@ -55,6 +54,7 @@ def TwistedManhattan(size,*arg,width=1,scale=1e-4,factor=1.,dtype= tf.float32,**
     # print(score.shape)
     @tf.function
     def R(x):
+        x = tf.cast(x,'float32')
         raw_score = tf.einsum('ijk,jk->i', hot(tf.expand_dims(x,-1)-v), score )
         return raw_score
     # print(R)
@@ -103,7 +103,7 @@ class balance_add(tf.keras.Model):
 
 def schedule_add(epoch=0):
     r = 1
-    h = 1/10
+    h = 1
     return np.array([r,h])
 
 class Reward():

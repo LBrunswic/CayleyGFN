@@ -16,10 +16,11 @@ def cycle_dec_to_array(n,cycles=[],start=0,dtype='float32'):
     return res
 
 def random_perm(batch_size, n):
+    dtype = 'int32'
     perm = np.zeros((batch_size, n), dtype=int)
-    admissible = np.full_like(perm, np.arange(n), dtype=int)
+    admissible = np.full_like(perm, np.arange(n), dtype=dtype)
     for i in range(n):
-        indices = np.full((batch_size, n - i), np.arange(n - i), dtype=int)
+        indices = np.full((batch_size, n - i), np.arange(n - i), dtype=dtype)
         choice = np.random.randint(0, n - i, (batch_size, 1))
         perm[:, i] = admissible[np.where(indices == choice)]
         admissible = admissible[np.where(indices != choice)].reshape((batch_size, -1))
@@ -29,13 +30,14 @@ def random_perm_extremal(batch_size, n):
     return np.concatenate([random_perm(batch_size,n-1)+1,np.zeros((batch_size,1))],axis=1)
 
 def random_perm_from_gen(batch_size, generators,iteration=100,stalk=None):
+    dtype = 'int32'
     n = generators[0].shape[0]
     generators = generators.numpy()
     g = generators.shape[0]
-    perm = np.zeros((batch_size, n), dtype=int)
+    perm = np.zeros((batch_size, n), dtype=dtype)
     if stalk is None:
         stalk = np.arange(n)
-    admissible = np.full_like(perm, stalk, dtype=int)
+    admissible = np.full_like(perm, stalk, dtype=dtype)
     moves = np.random.randint(g,size=(batch_size,iteration))
     for i in range(batch_size):
         for j in range(iteration):

@@ -65,14 +65,19 @@ class divergence(tf.keras.losses.Loss):
         self.delta = delta
 
     @tf.function
-    def call(self, Flow,nu):
-        Fout = Flow[:, 1]
-        Fin = Flow[:, 0]
-        return tf.reduce_sum(nu*self.g(tf.math.abs((self.delta+Fin) / (self.delta+Fout))))
+    def call(self, Flownu, bis):
+        Finstar = Flownu[..., 0]
+        Foutstar = Flownu[..., 1]
+        R =  Flownu[..., 2]
+        Finit = Flownu[..., 3]
+        density_fixed = Flownu[..., 4]
+        logdensity_trainable = Flownu[..., 5]
+        density_one = Flownu[..., 6]
+        return tf.reduce_mean(tf.reduce_sum(density_fixed*self.g(tf.math.abs((self.delta+Finstar+Finit) / (self.delta+Foutstar+R))),axis=-1))
 
 @tf.function
 def fall(x):
-    return -1/x
+    return 1/(1e-4-x)
 
 class MeanABError(tf.keras.losses.Loss):
     def __init__(self, A=tf.math.square, B=lambda x,y: 1,name='plop',**kwargs):
@@ -81,14 +86,14 @@ class MeanABError(tf.keras.losses.Loss):
         self.B = B
 
     @tf.function
-    def call(self, Flow, nu):
-        Finstar = Flow[:,:, 0]
-        Foutstar = Flow[:,:, 1]
-        Finit = Flow[:,:, 2]
-        R =  Flow[:,:, 3]
-        density_fixed = nu[0]
-        density_trainable = nu[1]
+    def call(self, Flownu, bis):
+        Finstar = Flownu[..., 0]
+        Foutstar = Flownu[..., 1]
+        R =  Flownu[..., 2]
+        Finit = Flownu[..., 3]
+        density_fixed = Flownu[..., 4]
+        logdensity_trainable = Flownu[..., 5]
+        density_one = Flownu[..., 6]
         Ldelta = tf.reduce_mean(tf.reduce_sum(density_fixed*self.A(Foutstar+R-Finstar-Finit)*self.B(Finstar, Foutstar),axis=-1))
-        Ebigtau = tf.reduce_mean(density_trainable[:,-1])
-        # Ebigtau = 0.
-        return Ldelta+0.1^fall(Ebigtau)
+        Ebigtau = tf.reduce_mean(logdensity_trainable[:,-1])
+        return Ldelta+fall(Ebigtau)

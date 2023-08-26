@@ -51,13 +51,6 @@ def generate_argparser():
     )
 
     parser.add_argument(
-        "--encoding",
-        help="kernel encoding",
-        default=-1,
-        dest="ENCODING",
-        type=int,
-    )
-    parser.add_argument(
         "--generators",
         help="Gflow training: GENERATORS",
         # default='3_cycles',
@@ -68,7 +61,7 @@ def generate_argparser():
     parser.add_argument(
         "--step_per_epoch",
         help="Gflow training: STEP_PER_EPOCH",
-        default=100,
+        default=10,
         dest="STEP_PER_EPOCH",
         type=int,
     )
@@ -76,14 +69,14 @@ def generate_argparser():
     parser.add_argument(
         "--MLP_depth",
         help="Gflow training: MLP_DEPTH",
-        default=4,
+        default=2,
         dest="MLP_DEPTH",
         type=int,
     )
     parser.add_argument(
         "--MLP_width",
         help="Gflow training: MLP_WIDTH",
-        default=128,
+        default=16,
         dest="MLP_WIDTH",
         type=int,
     )
@@ -171,7 +164,7 @@ def generate_argparser():
     parser.add_argument(
         "--length_cutoff_factor",
         help="length_cutoff_factor",
-        default=4,
+        default=2,
         dest="length_cutoff_factor",
         type=int,
     )
