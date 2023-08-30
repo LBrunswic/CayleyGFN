@@ -1,4 +1,5 @@
 import numpy as np
+import tensorflow as tf
 
 def permutation_matrix(sigma):
     n = len(sigma)
@@ -15,40 +16,13 @@ def cycle_dec_to_array(n,cycles=[],start=0,dtype='float32'):
             res[omega[i]-start] = omega[(i+1)%ell]-start
     return res
 
-def random_perm(batch_size, n):
-    dtype = 'int32'
-    perm = np.zeros((batch_size, n), dtype=int)
-    admissible = np.full_like(perm, np.arange(n), dtype=dtype)
-    for i in range(n):
-        indices = np.full((batch_size, n - i), np.arange(n - i), dtype=dtype)
-        choice = np.random.randint(0, n - i, (batch_size, 1))
-        perm[:, i] = admissible[np.where(indices == choice)]
-        admissible = admissible[np.where(indices != choice)].reshape((batch_size, -1))
-    return perm
 
-def random_perm_extremal(batch_size, n):
-    return np.concatenate([random_perm(batch_size,n-1)+1,np.zeros((batch_size,1))],axis=1)
-
-def random_perm_from_gen(batch_size, generators,iteration=100,stalk=None):
-    dtype = 'int32'
-    n = generators[0].shape[0]
-    generators = generators.numpy()
-    g = generators.shape[0]
-    perm = np.zeros((batch_size, n), dtype=dtype)
-    if stalk is None:
-        stalk = np.arange(n)
-    admissible = np.full_like(perm, stalk, dtype=dtype)
-    moves = np.random.randint(g,size=(batch_size,iteration))
-    for i in range(batch_size):
-        for j in range(iteration):
-            admissible[i] = generators[moves[i,j]]@admissible[i]
-    return admissible
 
 
 def rubick_generators(n):
     if n!=48:
         raise NotImplementedError('The size of the permutation group should be 48')
-    return [
+    generators = [
         cycle_dec_to_array(n,sigma,start=1,dtype=int)
         for sigma in [
             [(1, 3, 8, 6),(2, 5, 7, 4),(9, 33, 25, 17),(10, 34, 26, 18),(11, 35, 27, 19)],
@@ -59,17 +33,74 @@ def rubick_generators(n):
             [(41, 43, 48, 46),(42, 45, 47, 44),(14, 22, 30, 38),(15, 23, 31, 39),(16, 24, 32, 40)],
         ]
     ]
+    involutions = [False]*len(generators)
+    diameter = 30
+    return generators,involutions,diameter
+
 
 def iteration_random(batch_size,n,depth,generators):
-    base = np.full((batch_size,n),np.arange(n))
-    indices = np.arange(len(generators),dtype=int)
+    base = tf.broadcast_to(tf.range(n),(batch_size,n))
+    indices = tf.range(len(generators))
+    p = tf.zeros(shape=(1,len(generators)))
+    batch_indices = tf.broadcast_to(tf.reshape(tf.range(batch_size),(batch_size,1,1)),(batch_size,n,1))
     def kernel(x):
-        c = np.random.choice(indices,size=batch_size)
-        I = generators[c]
-        return x[np.arange(batch_size).reshape(-1,1),I]
-    for i in range(melange):
+        c = tf.expand_dims(tf.random.categorical(p,batch_size),-1)[0]
+        I = tf.expand_dims(tf.gather_nd(params=generators,indices=c),-1)
+        I = tf.concat([batch_indices,I],axis=-1)
+        return tf.gather_nd(params=x,indices=I)
+    for i in range(depth):
         base = kernel(base)
     return base
 
+
+
 def inversion(sigma):
     return np.unique(sigma,return_index=True)[1]
+
+
+class SymmetricUniform():
+    def __init__(self,n):
+        self.n = n
+        self.dtype = 'int32'
+
+    def sample(self,batch_size):
+        n = self.n
+        perm = np.zeros((batch_size, n), dtype=self.dtype)
+        admissible = np.full_like(perm, np.arange(n), dtype=self.dtype)
+        for i in range(n):
+            indices = np.full((batch_size, n - i), np.arange(n - i), dtype=self.dtype)
+            choice = np.random.randint(0, n - i, (batch_size, 1))
+            perm[:, i] = admissible[np.where(indices == choice)]
+            admissible = admissible[np.where(indices != choice)].reshape((batch_size, -1))
+        return perm
+
+    def density(self,position_batch):
+        return tf.ones(position_batch.shape[:-1])
+
+class SymmetricModal():
+    def __init__(self,n,modes,logits=None):
+        self.n = n
+        print(n)
+        self.Nmodes = len(modes)
+        self.dtype = 'int32'
+        self.modes = tf.Variable(tf.reshape(modes,(-1,self.n)),trainable=False)
+        if logits is None:
+            self.logits =  tf.Variable(tf.zeros((1,self.Nmodes)))
+        else:
+            self.logits =  tf.Variable(tf.reshape(logits,(1,-1)))
+        print(self.logits)
+    @tf.function
+    def sample(self,batch_size):
+        return tf.gather(self.modes, tf.random.categorical(self.logits,batch_size,dtype=self.dtype)[0])
+    def set_cutoff_logits(self,p):
+        self.update_logits(
+            [0.]*p + [-100.]*(self.Nmodes-p)
+        )
+    def update_logits(self,logits):
+        self.logits.assign(tf.reshape(logits,(1,-1)))
+    @tf.function
+    def density(self,position_batch):
+        A = tf.reshape(position_batch,(*position_batch.shape[:-1],1,self.n))
+        B = self.modes
+        B = tf.reshape(B,(1,1,*B.shape))
+        return tf.einsum('...i,i',tf.cast(tf.reduce_all(A==B,axis=-1),'float32'),tf.math.exp(self.logits)[0])

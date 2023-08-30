@@ -7,7 +7,8 @@ from decimal import Decimal
 
 @tf.function
 def exploration_forcing(tot,delta,exploration):
-    return  ((tot+delta) * exploration)
+    return  exploration
+    # return  ((tot+delta) * exploration)
 
 @tf.function
 def meanphi(self,phi,paths,proba):
@@ -47,6 +48,7 @@ class GFlowCayleyLinear(tf.keras.Model):
                  length_cutoff_factor=4,
                  initflow=1.0,
                  exploration_forcing = exploration_forcing,
+                 neighborhood = 0,
                  **kwargs
         ):
         if name is None:
@@ -62,19 +64,25 @@ class GFlowCayleyLinear(tf.keras.Model):
             **FlowEstimator_options['options'],
             kernel_options=FlowEstimator_options['kernel_options']
         ) # embedding -> M(moves)
+
         self.path_length = int(length_cutoff_factor * graph.diameter)
-        self.batch_size = batch_size
         self.nactions = tf.constant(self.graph.nactions)
         self.exploration_forcing = exploration_forcing
-
-    def build(self,input_shape):
-        self.FlowEstimator.build((None,self.embedding_dim))
         self.initial_flow = tf.Variable(
-            initial_value=tf.keras.initializers.Constant(2.)(shape=(1,), dtype=self.dd_v),
+            initial_value=tf.keras.initializers.Constant(initflow)(shape=(1,), dtype=self.dd_v),
             trainable=True,
             constraint=tf.keras.constraints.non_neg(),
             name='init_flow'
         )
+        self.neighborhood = self.graph.iter(neighborhood)
+        # print(self.neighborhood[0])
+        self.pure_path_batch_size = batch_size
+        self.batch_size = self.pure_path_batch_size * len(self.neighborhood)
+        # print(len(self.neighborhood),self.batch_size,self.pure_path_batch_size)
+
+    def build(self,input_shape):
+        self.FlowEstimator.build((None,self.embedding_dim))
+
         self.paths = tf.Variable(tf.zeros((self.batch_size,self.path_length,self.embedding_dim),dtype=self.graph.representation_dtype),trainable=False)
         self.paths_true = tf.Variable(tf.zeros((self.batch_size,self.path_length,self.graph.group_dim),dtype=self.graph.group_dtype),trainable=False)
         self.paths_actions = tf.Variable(tf.zeros((self.batch_size,self.path_length-1,),dtype=self.graph.group_dtype),trainable=False)
@@ -101,7 +109,7 @@ class GFlowCayleyLinear(tf.keras.Model):
             name='init_flow'
         )
         self.path_init_flow = tf.Variable(tf.ones((self.batch_size,self.path_length)),trainable=False)
-        self.density =  tf.Variable(tf.ones((self.batch_size,self.path_length)),trainable=False)
+        self.path_density =  tf.Variable(tf.ones((self.batch_size,self.path_length)),trainable=False)
 
         self.FIOR = tf.Variable(tf.ones(
                 (self.batch_size,self.path_length,3)
@@ -120,7 +128,7 @@ class GFlowCayleyLinear(tf.keras.Model):
         )
 
         self.state_batch_size=self.batch_size,self.path_length
-        self.density_one = tf.constant(tf.ones_like(self.density))
+        self.path_density_one = tf.constant(tf.ones_like(self.path_density))
 
     def call(self,inputs):
         return self.FlowCompute()
@@ -149,7 +157,7 @@ class GFlowCayleyLinear(tf.keras.Model):
             shape=(self.batch_size,self.path_length,1)
         )
         R = tf.reshape(self.paths_reward,shape=(self.batch_size,self.path_length,1))
-        Finit = tf.ones_like(Fout)*self.initial_flow
+        Finit = tf.reshape(self.path_init_flow,shape=(self.batch_size,self.path_length,1))*self.initial_flow
         Fin = tf.zeros_like(Fout)
         for i in tf.range(0, nactions, 1):
             Fin += tf.reshape(
@@ -164,22 +172,26 @@ class GFlowCayleyLinear(tf.keras.Model):
         Flow = tf.concat([Fin, Fout, R,Finit],axis=-1)
         return Flow # (batch_size, path_length,4)
 
-    @tf.function
-    def gen_path_aux(self,delta=1e-8,exploration=0.):
-        batch_size = self.batch_size
-        self.paths_true[:,0].assign(self.graph.random(batch_size))
-        self.paths[:, 0].assign(self.graph.embedding(self.paths_true[:,0]))
+
+    # @tf.function
+    def gen_path(self,delta=1e-8,exploration=0., neighborhood = True):
+        if neighborhood:
+            batch_size = self.pure_path_batch_size
+        else:
+            batch_size = self.batch_size
+        self.paths_true[:batch_size,0].assign(tf.concat([self.graph.sample(batch_size)],axis=0))
+        self.paths[:batch_size, 0].assign(self.graph.embedding(self.paths_true[:batch_size,0]))
         for i in tf.range(self.path_length - 1):
-            Fout = self.FlowEstimator(self.paths[:, i])
+            Fout = self.FlowEstimator(self.paths[:batch_size, i])
             tot = tf.reduce_sum(Fout,axis=1,keepdims=True)/self.graph.nactions
             Fout = Fout + self.exploration_forcing(tot,delta,exploration)
-            Fcum = tf.math.cumsum(Fout, axis=1)
-            Fcum = Fcum / tf.reshape(Fcum[:, -1], (-1, 1))
+            # Fcum = tf.math.cumsum(Fout, axis=1)
+            # Fcum = Fcum / tf.reshape(Fcum[:, -1], (-1, 1))
 
-            self.paths_actions[:,i].assign(
+            self.paths_actions[:batch_size,i].assign(
                 tf.reshape(
                     tf.random.categorical(
-                        tf.math.log(Fcum),
+                        tf.math.log(Fout),
                         1,
                         dtype=self.paths_actions.dtype
                     )
@@ -187,28 +199,54 @@ class GFlowCayleyLinear(tf.keras.Model):
                     (-1,)
                 )
             )
-            onehot = tf.one_hot(self.paths_actions[:,i],self.nactions,dtype=self.graph.group_dtype)
-            self.paths_true[:, i + 1].assign(
+            onehot = tf.one_hot(self.paths_actions[:batch_size,i],self.nactions,dtype=self.graph.group_dtype)
+            self.paths_true[:batch_size, i + 1].assign(
                 tf.einsum(
                     'ia,ajk,ik->ij',
                     onehot,
                     self.graph.actions,
-                    self.paths_true[:, i]
+                    self.paths_true[:batch_size, i]
                 )
             )
-            self.paths[:, i+1].assign(self.graph.embedding(self.paths_true[:,i+1]))
+            # print('s',batch_size)
+            self.paths[:batch_size, i+1].assign(self.graph.embedding(self.paths_true[:,i+1])[:batch_size])
+            # print(self.neighborhood.dtype)
+        if neighborhood:
+            expanded_paths = tf.einsum('aij,btj->abti', self.neighborhood,self.paths_true[:self.pure_path_batch_size])
+            expanded_paths = tf.reshape(expanded_paths, (self.batch_size,self.path_length,self.graph.group_dim))
+            assert(tf.reduce_all(expanded_paths[:self.pure_path_batch_size]==self.paths_true[:self.pure_path_batch_size]))
+            self.paths_true.assign(expanded_paths)
+            self.paths.assign(self.graph.embedding(self.paths_true))
+
+
+    def update_edges(self):
         self.forward_edges.assign(self.graph.embedding(tf.einsum('aij,btj->btai', self.id_action,self.paths_true)))
         self.backward_edges.assign(self.graph.embedding(tf.einsum('aij,btj->btai', self.id_action_inverse,self.paths_true)))
+    def update_init_flow(self):
+        self.path_init_flow.assign(self.graph.density(self.paths_true))
 
-    def update_training_distribution(self,delta=1e-8,exploration=1e-1):
-        self.gen_path_aux(exploration=exploration)
+
+    def update_training_distribution(self,delta=1e-8,exploration=0.,neighborhood=True):
+        self.gen_path(exploration=exploration,neighborhood=neighborhood)
+        self.update_edges()
+        self.update_init_flow()
         self.update_reward()
+        # print(self.graph.generators)
+        # print(self.graph.actions)
+        # print(self.graph.reverse_actions)
+        # print('path_init_flow',self.path_init_flow)
+        # print('paths_true',self.paths_true)
+        # print('paths',self.paths)
         FinFoutRinit = self.FlowCompute()
         self.FIOR.assign(FinFoutRinit[:,:,:-1])
-        self.density.assign(self.density_foo(delta=delta))
+        path_density = self.path_density_foo(delta=delta)
+        # if neighborhood:
+        #     shape = path_density[:self.pure_path_batch_size].shape
+            # path_density = tf.broadcast_to(tf.expand_dims(path_density[:self.pure_path_batch_size],1),(shape[0],len(self.neighborhood),*shape[1:]))
+        self.path_density.assign(tf.reshape(path_density,self.path_density.shape))
 
     @tf.function
-    def density_foo(self,delta=1e-8,exploration=0.):
+    def path_density_foo(self,delta=1e-8,exploration=0.):
         FIOR = self.FlowCompute()
         p = FIOR[:,:, 1] / (
             delta+FIOR[:, :, 1] + FIOR[:, :, 2]
@@ -229,9 +267,9 @@ class GFlowCayleyLinear(tf.keras.Model):
             Flownu = tf.concat(
                 [
                     self.FlowCompute(),
-                    tf.expand_dims(self.density,-1),
+                    tf.expand_dims(self.path_density,-1),
                     tf.expand_dims(self.logdensity_foo(),-1),
-                    tf.expand_dims(self.density_one,-1)
+                    tf.expand_dims(self.path_density_one,-1)
                 ],
                 axis=-1
             )
@@ -244,9 +282,14 @@ class GFlowCayleyLinear(tf.keras.Model):
         return {
             'flow_init' : self.initial_flow,
             'loss':loss,
-            'Elen':expected_len(Flownu[...,4]),
-            'Eloglen':expected_len(tf.math.exp(Flownu[...,5])),
-            'Erew':expected_reward(Flownu[...,1],Flownu[...,2],Flownu[...,4],),
-            'Elogrew':expected_reward(Flownu[...,1],Flownu[...,2],tf.math.exp(Flownu[...,5]),),
-            'densityError': tf.reduce_mean(tf.math.abs(Flownu[...,5]-tf.math.log(Flownu[...,4]))),
+            'Elen':expected_len(Flownu[:self.pure_path_batch_size,:,4]),
+            # 'Eloglen':expected_len(tf.math.exp(Flownu[...,5])),
+            'Erew':expected_reward(Flownu[:self.pure_path_batch_size,:,1],Flownu[:self.pure_path_batch_size,:,2],tf.math.exp(Flownu[:self.pure_path_batch_size,:,5]),),
+            'MaxRew':tf.reduce_max(Flownu[:self.pure_path_batch_size,:,2]),
+
+            # 'Elogrew':expected_reward(Flownu[...,1],Flownu[...,2],tf.math.exp(Flownu[...,5]),),
+            # 'densityError': tf.reduce_mean(tf.math.abs(Flownu[...,5]-tf.math.log(Flownu[...,4]))),
+            # 'density0': tf.reduce_mean(Flownu[:,0,4]),
+            # 'density1': tf.reduce_mean(Flownu[:,1,4]),
+            # 'density2': tf.reduce_mean(Flownu[:,2,4]),
         }

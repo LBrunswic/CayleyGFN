@@ -3,6 +3,8 @@ import itertools
 import tensorflow as tf
 from Groups.symmetric_groups import *
 from scipy.linalg import block_diag
+import os
+
 
 class CayleyGraphLinearEmb():
     def __init__(self,
@@ -13,6 +15,8 @@ class CayleyGraphLinearEmb():
                  random_gen=None,
                  group_dim=None,
                  embedding_dim=None,
+                 rep_list=None,
+                 generators=None,
                  name='cayley_graph',
                  group_dtype='int32',
                  representation_dtype='float32',
@@ -20,15 +24,16 @@ class CayleyGraphLinearEmb():
 
         self.nactions = len(direct_actions)
         self.actions = tf.constant(direct_actions,dtype=group_dtype)
-        print(self.actions)
-
+        # print(self.actions)
+        self.generators = generators
         self.reverse_actions = tf.constant(inverse_actions,dtype=group_dtype)
-        print(self.reverse_actions)
+        # print(self.reverse_actions)
 
         self.group_dim = group_dim
         self.embedding_dim = tf.constant(embedding_dim) # always a (p,)
         self.group_dtype = group_dtype
         self.representation_dtype = representation_dtype
+        self.representation = rep_list[0][0]
 
 
         self.name = name
@@ -36,9 +41,21 @@ class CayleyGraphLinearEmb():
         self.random_gen = random_gen
         self.embedding = embedding
 
-    def random(self, batch_size):
-        initial_position = self.random_gen(batch_size)
-        return initial_position
+    def iter(self,depth):
+        N = self.group_dim
+        base = np.arange(N,dtype='int32').reshape(1,-1)
+        for i in range(depth):
+            old = [tuple(x) for x in base]
+            old_set = set(old)
+            new = list(set([tuple(x) for x in base[...,self.generators].reshape(-1,N) if tuple(x) not in old_set]))
+            base = np.array(old+new)
+        return tf.constant(np.array([self.representation(g) for g in  base],dtype='int32'))
+
+    def sample(self, batch_size):
+        return self.random_gen.sample(batch_size)
+
+    def density(self, position_batch):
+        return self.random_gen.density(position_batch)
 
     def __str__(self):
         return self.name
@@ -54,17 +71,30 @@ Representations = {
     # name -> size ->  (morphism, dim)
     'natural' : lambda n : (permutation_matrix,n),
 }
-RandomGenerators = {
-    # name -> batch_size -> size -> (batch_size,size)
-    'uniform': random_perm,
-    'uniform_extremal': random_perm_extremal,
-    'deterministic': lambda b,n : np.full((b,n),np.arange(n)),
-    'rubick': lambda b,n : rubick_random(b)
-}
+
+rubick_gen = tf.constant(rubick_generators(48)[0])
 
 pi = np.math.pi
 def hot(n,*args,omega=1,**kwarg):
     Id = tf.eye(n)
+    def aux(paths):
+        # print((*paths.shape[:-1], n*n,))
+        # print(tf.gather(Id,paths))
+        x = tf.gather(Id,paths)
+        k = len(x.shape)
+        # print((*x.shape[:-2],k-2,k-1))
+        transpose_shape = (*tuple(range(k-2)),k-2,k-1)
+        return tf.cast(
+            tf.reshape(
+                tf.transpose(x,transpose_shape),
+                (*paths.shape[:-1], n*n,)
+            ),
+        'float32')
+    return aux,n*n
+pi = np.math.pi
+def hotalpha(n,*args,omega=1,**kwarg):
+    alpha = tf.reshape(tf.math.exp(-10*np.arange(n,dtype='float32')),(n,1))
+    Id = tf.eye(n)*alpha
     def aux(paths):
         return tf.cast(tf.reshape(tf.gather(Id,paths),(*paths.shape[:-1], n*n,) ),'float32')
     return aux,n*n
@@ -72,7 +102,8 @@ Embeddings = {
     'natural': lambda n,*args,**kwarg: (lambda x : x,n),
     'cos': lambda n,*args,omega=1,**kwarg: (lambda x :tf.math.cos(2*omega*pi*tf.cast(x,'float32')/n),n),
     'sin': lambda n,*args,omega=1,**kwarg: (lambda x :tf.math.sin(2*omega*pi*tf.cast(x,'float32')/n),n),
-    'hot': hot
+    'hot': hot,
+    'hotalpha': hotalpha
 }
 
 def Symmetric(
@@ -80,10 +111,11 @@ def Symmetric(
     generators='trans_cycle_a',
     representation = [('natural',{})],
     inverse = False,
-    random_gen = 'uniform',
+    random_gen = None,
     embedding = [('natural',{})],
     dtype='float32'
 ):
+    assert(random_gen is not None)
     generators,involutions,diameter = SymmetricGenerators[generators](n)
     if inverse:
         inverse_generators = []
@@ -91,7 +123,7 @@ def Symmetric(
             if not involutions[i]:
                 inverse_generators.append(inversion(gen))
         generators += inverse_generators
-
+    generators = tf.constant(generators)
     R_list = [Representations[rep](n) for rep,options in representation]
 
     direct_actions = tf.cast(tf.stack([
@@ -109,18 +141,16 @@ def Symmetric(
     @tf.function
     def iota(x):
          return tf.concat([emb(x) for emb,_  in E_list],axis=-1)
-    random_fn = lambda b: RandomGenerators[random_gen](b,n)
 
-
-    return CayleyGraphLinearEmb(direct_actions,inverse_actions,diameter,random_gen=random_fn,embedding=iota,embedding_dim=embedding_dim, group_dim=n, name='Sym%s_%s' % (n,generators))
+    return CayleyGraphLinearEmb(direct_actions,inverse_actions,diameter,generators=generators,rep_list = R_list,random_gen=random_gen,embedding=iota,embedding_dim=embedding_dim, group_dim=n, name='Sym%s_%s' % (n,generators.numpy()))
 
 from pyvis.network import Network
 import networkx as nx
 from networkx.readwrite import json_graph
 
 
-def graph_representation(n,generators_choice='transpositions',inverse=False,reward=lambda x:x[0]==0):
-    colors = ['blue','red','green','purple','black','cyan']
+def graph_representation(n,generators_choice='transpositions',filename='graph',inverse=False,reward=lambda x:x[0]==0):
+    colors = ['blue','red','green','purple','black','cyan','orange','orangered','yellowgreen']
     generators = SymmetricGenerators[generators_choice](n)[0]
     if inverse:
         for i,inv in enumerate(SymmetricGenerators[generators_choice](n)[1]):
@@ -188,35 +218,69 @@ def graph_representation(n,generators_choice='transpositions',inverse=False,rewa
       </body>
     </html>
     """
-    with open('graph.html','w') as f:
+    with open('%s.html' % filename,'w') as f:
         f.write(template % dot.replace('\n',''))
     return net
 
 
 from itertools import permutations
 import matplotlib as mpl
-def path_representation(paths,reward=lambda x:x[0]==0):
+def path_representation(paths,filename='graph',folder = 'results', previous=None,next=None ,reward=lambda x:x[0]==0,flow=None):
+    paths = paths.numpy()
     cmap = mpl.colormaps['turbo']
-    colors = ['gold','blue','red','green','yellow','cyan']
+    colors = ['gold','red','green','cyan','purple','blue','orange','orangered','yellowgreen','darkgreen','pink','lightcyan','darkred','hotpink','peachpuff','cornflowerblue']
     batch_size, length,n= paths.shape
     net = nx.MultiDiGraph()
     if batch_size>len(colors):
         NotImplementedError('too many paths to draw')
-
+    if flow is None:
+        flow = np.ones_like(paths[...,0],dtype=int)*10
     def name(x):
-        return ''.join([str(u) for u in x])
+        R = str(int(reward(x.reshape(1,-1)).numpy().reshape(-1)))
+        state = "_"+''.join([str(u) for u in x])
+        return state
+        return R+state
+        # print()
+        # print('_______________________')
+        # print(x.shape)
+        # print(reward(x))
+        # res = str(int(reward(x.reshape(1,-1))))
+        # print(res)
+        # return res
 
-    for x in permutations(np.arange(n,dtype=int)):
-        net.add_node(name(x), size=20, color=colors[reward(x)])
+    # for x in permutations(np.arange(n,dtype=int)):
+    #     net.add_node(name(x), size=20, color=colors[reward(x)])
     for i,path  in enumerate(paths):
         for t in range(length-1):
             x = path[t]
             y = path[t+1]
-            net.add_edge(name(x),name(y),color=colors[i])
+            if t == 0:
+                net.add_node(
+                    name(x), size=20,
+                    # color=colors[reward(x)],
+                    penwidth =4)
+            else:
+                net.add_node(name(x), size=20,
+                # color=colors[reward(x)]
+                )
+            net.add_node(name(y), size=20,
+             # color=colors[reward(y)]
+             )
+            # print(flow[i,t])
+            net.add_edge(name(x),name(y),color=colors[i], penwidth = flow[i,t])
+    for i,path  in enumerate(paths):
+        x = path[0]
+        net.add_node(name(x), size=20,color=colors[i],penwidth=10)
 
     nx.nx_pydot.write_dot(net,'plop.dot')
     with open('plop.dot','r') as f:
         dot = ' '.join(f.readlines())
+    links=''
+    if previous is not None:
+        links += '<a href="%s.html">previous</a>' % previous
+    if next is not None:
+        links += '<a href="%s.html">next</a>' % next
+
     template = """
         <!DOCTYPE html>
     <html lang="en">
@@ -238,6 +302,9 @@ def path_representation(paths,reward=lambda x:x[0]==0):
       </head>
       <body>
         <div id="mynetwork"></div>
+
+        %s
+
         <script type="text/javascript">
           // create an array with nodes
 
@@ -252,6 +319,6 @@ def path_representation(paths,reward=lambda x:x[0]==0):
       </body>
     </html>
     """
-    with open('graph.html','w') as f:
-        f.write(template % dot.replace('\n',''))
+    with open('%s.html' % os.path.join(folder,filename),'w') as f:
+        f.write(template % (links,dot.replace('\n','')))
     return net

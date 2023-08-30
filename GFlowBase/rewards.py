@@ -44,9 +44,9 @@ def Manhattan(size,*arg,width=1,dtype= tf.float32,**kwarg):
 
 def TwistedManhattan(size,*arg,width=1,scale=1e-4,factor=1.,dtype= tf.float32,**kwarg):
     # print(size,width,arg,factor,scale,dtype,kwarg)
-    a = np.power(scale,1/size)
+    a = scale
     # score = factor*tf.constant(a**np.arange(size),dtype=dtype)
-    score = factor*tf.constant(a**np.arange(size),dtype=dtype)
+    score = factor*tf.constant(tf.math.exp(a*tf.range(size,dtype=dtype)),dtype=dtype)
     score = np.stack([np.roll(np.concatenate([score[::-1],score[1:]]),i)[size-1:size-1+width] for i in range(size)])
     print(score)
     v = tf.constant(np.arange(width).reshape(1,1,-1),dtype=dtype)
@@ -66,28 +66,6 @@ def H_first_one(*arg,dtype=tf.float32,**kwarg):
         return 54/(1+tf.math.abs(x[:,0]))
     return R
 
-
-def R_rubick(*arg,dtype=tf.float32,**kwarg):
-    target = tf.constant(np.arange(48),dtype=dtype)
-    # @tf.function(input_signature=[tf.TensorSpec(shape=(None,48), dtype=tf.float32)])
-    def R(x):
-        return tf.nn.relu(1-2*tf.norm(x-target,ord=1,axis=1))
-    return R
-
-def H_rubick(*arg,dtype=tf.float32,**kwarg):
-    target = tf.constant(np.arange(54),dtype=dtype)
-    @tf.function(input_signature=[tf.TensorSpec(shape=(None,54), dtype=tf.float32)])
-    def R(x):
-        return 1/(1+tf.norm(x-target,ord=1,axis=1))
-    return R
-
-# def R_main(x,THRESHOLD = 15000):
-#     x = x.astype('int32')
-#     batch_size = x.shape[0]
-#     res = []
-#     for i in range(batch_size):
-#         res.append(base.score(order=x[i]))
-#     return tf.constant(np.log(1+np.abs(np.array(res).astype('float32')-THRESHOLD)))
 
 class balance_add(tf.keras.Model):
     def __init__(self):

@@ -26,11 +26,12 @@ else:
 import platform
 import numpy as np
 from time import time
-from Graphs.CayleyGraph import Symmetric
-from GFlowBase.kernel import dense_gen
+from Graphs.CayleyGraph import Symmetric, path_representation
+from GFlowBase.kernel import *
 from GFlowBase.GFlowCayley import GFlowCayleyLinear
 from GFlowBase.losses import *
 from GFlowBase.rewards import *
+from Groups.symmetric_groups import SymmetricUniform,SymmetricModal,rubick_generators,inversion,iteration_random
 from metrics import ReplayBuffer
 from datetime import datetime
 import logging
@@ -38,8 +39,7 @@ import signal
 import time
 import pickle
 
-
-tf.random.set_seed(12474)
+# tf.random.set_seed(12474)
 
 
 loss_fn_dic = {
@@ -60,34 +60,61 @@ LR= HP.LR
 EPOCHS = HP.EPOCHS
 STEP_PER_EPOCH = HP.STEP_PER_EPOCH
 GENERATORS = HP.GENERATORS
+NEIGHBORHOOD = HP.NEIGHBORHOOD
 
 key = LOSS.split(',')[0]
 param = [eval(x) for x in LOSS.split(',')[1:]]
 loss_fn = loss_fn_dic[key](*param)
-reward_fn = R_first_k(SIZE,1)
-# heuristic_fn = R_zero()
-heuristic_fn = TwistedManhattan(SIZE,width=1,scale=1e-4,factor=1.)
+reward_fn = R_first_k(1,1)
+# reward_fn = R_first_k(1,SIZE)
+# reward_fn = TwistedManhattan(SIZE,width=SIZE,scale=-100,factor=1)
+heuristic_fn = R_zero()
+# heuristic_fn = TwistedManhattan(SIZE,width=SIZE,scale=1e-3,factor=1e-3)
+
+
+# def rubick_modes(depth):
+#     rubicks_generators = [inversion(x) for x in rubick_generators(48)[0]] + rubick_generators(48)[0]
+#     rubicks_generators = np.array(list(set([tuple(x) for x in rubicks_generators])),dtype='int32')
+#     def iter(base,g,N):
+#         old = [tuple(x) for x in base]
+#         old_set = set(old)
+#         new = [tuple(x) for x in base[...,g].reshape(-1,N) if tuple(x) not in old_set]
+#         return np.array(old+new)
+#     modes = np.arange(48,dtype='int32').reshape(1,-1)
+#     sizes = [1]
+#     for i in range(depth):
+#         modes = iter(modes,rubicks_generators,48)
+#         sizes.append(len(modes))
+#     return modes,sizes
+# modes,sizes = rubick_modes(1)
 
 G = Symmetric(
     SIZE,
     generators=GENERATORS,
     representation = [('natural',{})],
-    inverse = False,
-    random_gen = 'uniform',
-    embedding = [('hot',{}),('cos',{}),('sin',{})],
+    inverse = True,
+    # random_gen = SymmetricModal(SIZE,modes),
+    random_gen = SymmetricUniform(SIZE),
+    embedding = [
+        ('hot',{'choice':None}),
+        # ('hot',{'choice':[0]}),
+        # ('cos',{})
+    ],
     dtype='float32'
 )
-
+print(GENERATORS)
 
 FlowEstimator_options = {
         'options': {
-            'kernel_depth' : 5,
+        'kernel_depth' : 0,
             'width' : 64,
             'final_activation' : 'linear',
+            # 'head' : direct_head
         },
         'kernel_options': {
-            'activation': tf.keras.layers.LeakyReLU(),
-            'kernel_regularizer' : tf.keras.regularizers.L1L2(l1=0.01, l2=0.1)
+            # 'activation': tf.keras.layers.LeakyReLU(),
+            'activation': 'tanh',
+            # 'kernel_regularizer' : tf.keras.regularizers.L1L2(l1=0.01, l2=0.1)
         }
     }
 
@@ -100,12 +127,14 @@ flow = GFlowCayleyLinear(
     batch_size=BATCH_SIZE,
     FlowEstimatorGen=(dense_gen, FlowEstimator_options),
     length_cutoff_factor=length_cutoff_factor,
-    initflow=initflow
+    initflow=initflow,
+    neighborhood=NEIGHBORHOOD
 )
 
 flow(np.zeros(0))
 flow.FlowEstimator.kernel.summary()
-
+# R = flow.reward(G.sample(100000))
+# print(np.mean(R),np.sum(R**2)/np.sum(R))
 
 flow.compile(
     optimizer=tf.keras.optimizers.Adam(learning_rate=LR),
@@ -113,11 +142,35 @@ flow.compile(
 )
 
 
-
 Replay = ReplayBuffer()
-R = flow.reward(G.random_gen(100000))
-print(np.mean(R),np.sum(R**2)/np.sum(R))
+Replay.reward = reward_fn
 
+class LearningCuriculum(tf.keras.callbacks.Callback):
+    def on_train_begin(self,logs=None):
+        period1 = 1
+        period2 = 10001
+        period3 = 2009
+        period4 = 1000
+        period5 = 2000
+        print(modes[0])
+        print(flow.graph.random_gen.sample(10))
+        flow.graph.random_gen.set_cutoff_logits(sizes[0])
+    def on_epoch_end(self, epoch, logs=None):
+        if epoch == period1:
+            self.model.graph.random_gen.set_cutoff_logits(sizes[1])
+            print(flow.graph.random_gen.sample(10))
+        if epoch == period2:
+            self.model.graph.random_gen.set_cutoff_logits(sizes[2])
+            print(flow.graph.random_gen.sample(10))
+        if epoch == period3:
+            self.model.graph.random_gen.set_cutoff_logits(sizes[3])
+            print(flow.graph.random_gen.sample(10))
+        if epoch == period4:
+            self.model.graph.random_gen.set_cutoff_logits(sizes[4])
+            print(flow.graph.random_gen.sample(10))
+        if epoch == period5:
+            self.model.graph.random_gen.set_cutoff_logits(sizes[5])
+            print(flow.graph.random_gen.sample(10))
 
 flow.fit(
     np.zeros(STEP_PER_EPOCH),
@@ -127,5 +180,6 @@ flow.fit(
     batch_size=1,
     callbacks=[
         Replay,
+        # LearningCuriculum()
     ]
 )

@@ -8,7 +8,7 @@ def generate_argparser():
     parser.add_argument(
         "--gpu",
         help="which gpu for training",
-        default=-1,
+        default=0,
         dest="GPU",
         type=int,
     )
@@ -23,7 +23,7 @@ def generate_argparser():
     parser.add_argument(
         "--batchsize",
         help="Gflow training: Batch size ",
-        default=4,
+        default=256,
         dest="BATCH_SIZE",
         type=int,
     )
@@ -38,14 +38,14 @@ def generate_argparser():
     parser.add_argument(
         "--epochs",
         help="Gflow training: EPOCHS",
-        default=100,
+        default=10000,
         dest="EPOCHS",
         type=int,
     )
     parser.add_argument(
         "--size",
         help="Gflow training: SIZE",
-        default=3,
+        default=48,
         dest="SIZE",
         type=int,
     )
@@ -57,6 +57,15 @@ def generate_argparser():
         default='trans_cycle_a',
         dest="GENERATORS",
         type=str,
+    )
+
+    parser.add_argument(
+        "--neighborhood",
+        help="radius of paths neighborhoods",
+        # default='3_cycles',
+        default=0,
+        dest="NEIGHBORHOOD",
+        type=int,
     )
     parser.add_argument(
         "--step_per_epoch",
