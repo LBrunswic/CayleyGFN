@@ -65,9 +65,9 @@ NEIGHBORHOOD = HP.NEIGHBORHOOD
 key = LOSS.split(',')[0]
 param = [eval(x) for x in LOSS.split(',')[1:]]
 loss_fn = loss_fn_dic[key](*param)
-reward_fn = R_first_k(1,1)
+# reward_fn = R_first_k(1,2)
 # reward_fn = R_first_k(1,SIZE)
-# reward_fn = TwistedManhattan(SIZE,width=SIZE,scale=-100,factor=1)
+reward_fn = TwistedManhattan(SIZE,width=2,scale=-10,factor=1)
 heuristic_fn = R_zero()
 # heuristic_fn = TwistedManhattan(SIZE,width=SIZE,scale=1e-3,factor=1e-3)
 
@@ -106,7 +106,7 @@ print(GENERATORS)
 
 FlowEstimator_options = {
         'options': {
-        'kernel_depth' : 0,
+        'kernel_depth' : 3,
             'width' : 64,
             'final_activation' : 'linear',
             # 'head' : direct_head

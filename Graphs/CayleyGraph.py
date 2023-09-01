@@ -237,7 +237,7 @@ def path_representation(paths,filename='graph',folder = 'results', previous=None
         flow = np.ones_like(paths[...,0],dtype=int)*10
     def name(x):
         R = str(int(reward(x.reshape(1,-1)).numpy().reshape(-1)))
-        state = "_"+''.join([str(u) for u in x])
+        state = "."+'.'.join([str(u) for u in x])
         return state
         return R+state
         # print()

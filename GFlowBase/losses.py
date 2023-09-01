@@ -77,7 +77,7 @@ class divergence(tf.keras.losses.Loss):
 
 @tf.function
 def fall(x):
-    return tf.nn.relu(1+x/20)
+    return tf.nn.relu(1+x/10)
 
 @tf.function
 def Rbar_Error(paths_reward,  density, delta=1e-8):
@@ -110,4 +110,4 @@ class MeanABError(tf.keras.losses.Loss):
         weights = 1.
         Ldelta = tf.reduce_mean(weights*tf.reduce_sum(density_fixed*self.A(Foutstar+R-Finstar-Finit)*self.B(Finstar, Foutstar),axis=-1))
         Ebigtau = tf.reduce_mean(logdensity_trainable[:,-1]) #log P(tau > tmax)
-        return Ldelta#+fall(Ebigtau)
+        return Ldelta+fall(Ebigtau)

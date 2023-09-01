@@ -10,13 +10,13 @@ from datetime import datetime
 
 class ReplayBuffer(tf.keras.callbacks.Callback):
     def on_epoch_begin(self, epoch, logs=None):
-        self.model.update_training_distribution(exploration=1/(1+epoch**2))
+        self.model.update_training_distribution(exploration=0.)
     def on_epoch_end(self,epoch,logs=None):
         flow = self.model
-        
+
         F=(flow.path_density[...,1:].numpy()*8).astype(int)
         path_representation(
-            flow.paths_true[:14,:15],
+            flow.paths_true[:14,:30],
             flow=F,
             reward=self.reward,
             # reward=lambda x:np.all(x==np.arange(48)),
