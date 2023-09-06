@@ -74,6 +74,13 @@ def generate_argparser():
         dest="STEP_PER_EPOCH",
         type=int,
     )
+    parser.add_argument(
+        "--cycles",
+        help="Gflow training: improve_cycle",
+        default=10,
+        dest="improve_cycle",
+        type=int,
+    )
 
     parser.add_argument(
         "--MLP_depth",

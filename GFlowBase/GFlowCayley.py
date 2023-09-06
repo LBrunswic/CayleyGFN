@@ -4,37 +4,15 @@ import os
 sys.path.append("../")
 import tensorflow as tf
 from decimal import Decimal
+from metrics import ReplayBuffer,ExpectedLen,ExpectedReward
 
 @tf.function
 def exploration_forcing(tot,delta,exploration):
     return  exploration
-    # return  ((tot+delta) * exploration)
 
 @tf.function
-def meanphi(self,phi,paths,proba):
-    PHI = phi(tf.reshape(paths[:, :-1], (-1, paths.shape[-1])))
-    P = (proba[:, :-1] - proba[:, 1:])
-    return tf.reduce_mean(tf.reduce_sum(tf.reshape(PHI,paths[:,:-1].shape[:2]) * P,axis=1),axis=0)
-
-@tf.function
-def Rbar_Error(paths_reward,  density, delta=1e-8):
-    RRbar = tf.reduce_mean(tf.reduce_sum(paths_reward * density,axis=1),axis=0)
-    RR = tf.reduce_sum(tf.math.square(paths_reward)) / tf.reduce_sum(paths_reward)
-    return tf.abs(RRbar-RR)/(delta+RR)
-
-@tf.function
-def Rhat_Error(FIOR,total_R,initial_flow,delta=1e-8):
-    return tf.reduce_mean(
-        tf.math.abs(initial_flow+FIOR[:, :, 0]-FIOR[:, :, 1]-FIOR[:, :, 2])/(delta+total_R)
-    )
-
-@tf.function
-def expected_len(density):
-    return tf.reduce_mean(tf.reduce_sum(density,axis=1))
-
-@tf.function
-def expected_reward(FoutStar,R,density,delta=1e-8):
-    return tf.reduce_mean(tf.reduce_sum(density*R**2/(delta+FoutStar+R),axis=1),axis=0)
+def no_reg(self,loss_gradients,reg_gradients):
+    return loss_gradients
 
 
 class GFlowCayleyLinear(tf.keras.Model):
@@ -49,11 +27,15 @@ class GFlowCayleyLinear(tf.keras.Model):
                  initflow=1.0,
                  exploration_forcing = exploration_forcing,
                  neighborhood = 0,
+                 improve_cycle=10,
+                 reg_post=no_reg,
+                 reg_fn=lambda x:tf.constant(0.),
                  **kwargs
         ):
         if name is None:
             name = 'flow_on_'+graph.name
         super(GFlowCayleyLinear, self).__init__(name=name, **kwargs)
+        self.metricsss = [ExpectedReward(),ExpectedLen()]
         self.graph = graph
         self.reward = reward # embedding -> RR_+
         self.embedding_dim = int(graph.embedding_dim)
@@ -64,7 +46,7 @@ class GFlowCayleyLinear(tf.keras.Model):
             **FlowEstimator_options['options'],
             kernel_options=FlowEstimator_options['kernel_options']
         ) # embedding -> M(moves)
-
+        self.improve_cycle = improve_cycle
         self.path_length = int(length_cutoff_factor * graph.diameter)
         self.nactions = tf.constant(self.graph.nactions)
         self.exploration_forcing = exploration_forcing
@@ -76,10 +58,10 @@ class GFlowCayleyLinear(tf.keras.Model):
             name='init_flow'
         )
         self.neighborhood = self.graph.iter(neighborhood)
-        # print(self.neighborhood[0])
         self.pure_path_batch_size = batch_size
         self.batch_size = self.pure_path_batch_size * len(self.neighborhood)
-        # print(len(self.neighborhood),self.batch_size,self.pure_path_batch_size)
+        self.reg_post=reg_post
+        self.reg_fn = reg_fn
 
     def build(self,input_shape):
         self.FlowEstimator.build((None,self.embedding_dim))
@@ -87,7 +69,16 @@ class GFlowCayleyLinear(tf.keras.Model):
         self.paths = tf.Variable(tf.zeros((self.batch_size,self.path_length,self.embedding_dim),dtype=self.graph.representation_dtype),trainable=False)
         self.paths_true = tf.Variable(tf.zeros((self.batch_size,self.path_length,self.graph.group_dim),dtype=self.graph.group_dtype),trainable=False)
         self.paths_actions = tf.Variable(tf.zeros((self.batch_size,self.path_length-1,),dtype=self.graph.group_dtype),trainable=False)
-
+        self.mean_MC = tf.Variable(
+            initial_value=tf.keras.initializers.Constant(0.)(shape=(), dtype=self.dd_v),
+            trainable=False,
+            name='mean_MC'
+        )
+        self.n_sample = tf.Variable(
+            initial_value=tf.keras.initializers.Constant(0)(shape=(2,), dtype='int64'),
+            trainable=False,
+            name='n_sample'
+        )
         self.id_action = tf.constant(
             tf.concat([
                 tf.reshape(tf.eye(self.graph.group_dim,dtype=self.graph.group_dtype),(1,self.graph.group_dim,self.graph.group_dim)),
@@ -113,7 +104,7 @@ class GFlowCayleyLinear(tf.keras.Model):
         self.path_density =  tf.Variable(tf.ones((self.batch_size,self.path_length)),trainable=False)
 
         self.FIOR = tf.Variable(tf.ones(
-                (self.batch_size,self.path_length,3)
+                (self.batch_size,self.path_length,4)
             ),
             trainable=False
         )
@@ -132,7 +123,9 @@ class GFlowCayleyLinear(tf.keras.Model):
         self.path_density_one = tf.constant(tf.ones_like(self.path_density))
 
     def call(self,inputs):
-        return self.FlowCompute()
+        res = self.FlowCompute()
+        self.n_train = len(self.trainable_variables)
+        return res
 
     @tf.function
     def update_reward(self):
@@ -183,9 +176,48 @@ class GFlowCayleyLinear(tf.keras.Model):
             Fout = self.FlowEstimator(self.paths[:batch_size, i])
             tot = tf.reduce_sum(Fout,axis=1,keepdims=True)/self.graph.nactions
             Fout = Fout + self.exploration_forcing(tot,delta,exploration)
-            # Fcum = tf.math.cumsum(Fout, axis=1)
-            # Fcum = Fcum / tf.reshape(Fcum[:, -1], (-1, 1))
+            self.paths_actions[:batch_size,i].assign(
+                tf.reshape(
+                    tf.random.categorical(
+                        tf.math.log(Fout),
+                        1,
+                        dtype=self.paths_actions.dtype
+                    )
+                    ,
+                    (-1,)
+                )
+            )
+            onehot = tf.one_hot(self.paths_actions[:batch_size,i],self.nactions,dtype=self.graph.group_dtype)
+            self.paths_true[:batch_size, i + 1].assign(
+                tf.einsum(
+                    'ia,ajk,ik->ij',
+                    onehot,
+                    self.graph.actions,
+                    self.paths_true[:batch_size, i]
+                )
+            )
+            # print('s',batch_size)
+            self.paths[:batch_size, i+1].assign(self.graph.embedding(self.paths_true[:,i+1])[:batch_size])
+            # print(self.neighborhood.dtype)
+        # if neighborhood:
+        expanded_paths = tf.einsum('aij,btj->abti', self.neighborhood,self.paths_true[:self.pure_path_batch_size])
+        expanded_paths = tf.reshape(expanded_paths, (self.batch_size,self.path_length,self.graph.group_dim))
+        # assert(tf.reduce_all(expanded_paths[:self.pure_path_batch_size]==self.paths_true[:self.pure_path_batch_size]))
+        self.paths_true.assign(expanded_paths)
+        self.paths.assign(self.graph.embedding(self.paths_true))
+        self.n_sample[1].assign(self.n_sample[1]+self.paths_true.shape[0]*self.paths_true.shape[1])
 
+
+    @tf.function
+    def gen_path_redraw(self,delta=1e-20,exploration=0.):
+        batch_size = self.pure_path_batch_size//2
+        # self.n_sample[1].assign(self.n_sample[1]+batch_size*self.paths_true.shape[1])
+        self.paths_true[:batch_size,0].assign(tf.concat([self.graph.sample(batch_size)],axis=0))
+        self.paths[:batch_size, 0].assign(self.graph.embedding(self.paths_true[:batch_size,0]))
+        for i in tf.range(self.path_length - 1):
+            Fout = self.FlowEstimator(self.paths[:batch_size, i])
+            tot = tf.reduce_sum(Fout,axis=1,keepdims=True)/self.graph.nactions
+            Fout = Fout + self.exploration_forcing(tot,delta,exploration)
             self.paths_actions[:batch_size,i].assign(
                 tf.reshape(
                     tf.random.categorical(
@@ -225,70 +257,117 @@ class GFlowCayleyLinear(tf.keras.Model):
         self.path_init_flow.assign(self.graph.density(self.paths_true))
 
     @tf.function
+    def sort(self):
+        # print(self.paths_reward)
+        scores = tf.reduce_sum(self.paths_reward,axis=1)
+        # print(scores)
+        indices = tf.argsort(scores,axis=0)
+        self.paths_true.assign(tf.gather(self.paths_true,indices,axis=0))
+        self.paths.assign(tf.gather(self.paths,indices,axis=0))
+        self.paths_actions.assign(tf.gather(self.paths_actions,indices,axis=0))
+        self.paths_reward.assign(tf.gather(self.paths_reward,indices,axis=0))
+
+    @tf.function
     def update_training_distribution(self,delta=1e-20,exploration=0.):
         self.gen_path(exploration=exploration)
+
+        self.update_reward()
+        self.update_ref_MC()
+        for _ in range(self.improve_cycle):
+            # print('redraw')
+            self.sort()
+            self.gen_path_redraw(exploration=exploration)
+            self.update_reward()
+        # self.sort()
         self.update_edges()
         self.update_init_flow()
-        self.update_reward()
-        # print(self.graph.generators)
-        # print(self.graph.actions)
-        # print(self.graph.reverse_actions)
-        # print('path_init_flow',self.path_init_flow)
-        # print('paths_true',self.paths_true)
-        # print('paths',self.paths)
         FinFoutRinit = self.FlowCompute()
-        self.FIOR.assign(FinFoutRinit[:,:,:-1])
+        self.FIOR.assign(FinFoutRinit)
         path_density = self.path_density_foo(delta=delta)
-        # if neighborhood:
-        #     shape = path_density[:self.pure_path_batch_size].shape
-            # path_density = tf.broadcast_to(tf.expand_dims(path_density[:self.pure_path_batch_size],1),(shape[0],len(self.neighborhood),*shape[1:]))
         self.path_density.assign(tf.reshape(path_density,self.path_density.shape))
+        alpha = [0.50,0.50,0.0,0.0,0.0]
+        self.initial_flow.assign(tf.math.log(
+            (
+                alpha[0]*self.initflow_estimate()+
+                alpha[1]*self.aux_initflow_estimate1()
+                # alpha[1]*self.initflow_estimate_5()+
+                # alpha[2]*self.initflow_estimate_3()+
+                # alpha[3]*tf.reduce_min([self.initflow_estimate_4(),1])
+            ) / self.ref_initflow
+        ))
+
+    @tf.function
+    def update_ref_MC(self):
+        self.mean_MC.assign(self.mean_MC + tf.reduce_mean(self.paths_reward[:,0]))
+        # self.mean_MC.assign(tf.reduce_mean(self.paths_reward[:,0]))
+        self.n_sample[0].assign(self.n_sample[0]+1)
+        # self.n_sample[0].assign(1)
 
     @tf.function
     def path_density_foo(self,delta=1e-20,exploration=0.):
+        print(delta)
         FIOR = self.FlowCompute()
         p = FIOR[:,:, 1] / (
             delta+FIOR[:, :, 1] + FIOR[:, :, 2]
         )
         return tf.math.cumprod(p,exclusive=True,axis=1)
 
+
     @tf.function
     def logdensity_foo(self,delta=1e-20,exploration=0.):
         FIOR = self.FlowCompute()
-        p = tf.math.log(delta+FIOR[:,:, 1])
-        p -= tf.math.log(delta+FIOR[:, :, 1] + FIOR[:, :, 2])
-        return tf.math.cumsum(p,axis=1,exclusive=True)
-
+        p = tf.math.log(delta+FIOR[:,:, 1]) - tf.math.log(delta+FIOR[:, :, 1] + FIOR[:, :, 2])
+        return tf.math.cumsum(p,exclusive=True,axis=1)
 
     @tf.function
+    def initflow_estimate(self):
+        return tf.math.exp(self.initial_flow)*self.ref_initflow
+
+    @tf.function
+    def aux_initflow_estimate1(self):
+        return tf.reduce_mean(self.paths_reward[:,0])
+
+    @property
+    def metrics(self):
+        # We list our `Metric` objects here so that `reset_states()` can be
+        # called automatically at the start of each epoch
+        # or at the start of `evaluate()`.
+        # If you don't implement this property, you have to call
+        # `reset_states()` yourself at the time of your choosing.
+        return self.metricsss
+
+    # @tf.function
     def train_step(self, data):
-        with tf.GradientTape() as tape:
+        with tf.GradientTape( persistent=True) as tape:
             Flownu = tf.concat(
                 [
                     self.FlowCompute(),
                     tf.expand_dims(self.path_density,-1),
                     tf.expand_dims(self.logdensity_foo(),-1),
+                    tf.expand_dims(self.path_density_foo(),-1),
                     tf.expand_dims(self.path_density_one,-1)
                 ],
                 axis=-1
             )
+            reg = self.reg_fn(Flownu)
             loss = self.compiled_loss(Flownu,Flownu)
         trainable_vars = self.trainable_variables
-        gradients = tape.gradient(loss, trainable_vars)
-        a = zip(gradients, trainable_vars)
+        # gradients = tape.jacobian(loss, trainable_vars)
+        loss_gradients = tape.gradient(loss, trainable_vars,unconnected_gradients=tf.UnconnectedGradients.ZERO)
+        reg_gradients = tape.gradient(reg, trainable_vars,unconnected_gradients=tf.UnconnectedGradients.ZERO)
+        a = zip(self.reg_post(self,loss_gradients,reg_gradients), trainable_vars)
         self.optimizer.apply_gradients(a)
-        self.loss_val.assign(loss)
-        return {
-            'flow_init' : tf.math.exp(self.initial_flow)*self.ref_initflow,
-            'loss':loss,
-            'Elen':expected_len(Flownu[:self.pure_path_batch_size,:,4]),
-            # 'Eloglen':expected_len(tf.math.exp(Flownu[...,5])),
-            'Erew':expected_reward(Flownu[:self.pure_path_batch_size,:,1],Flownu[:self.pure_path_batch_size,:,2],tf.math.exp(Flownu[:self.pure_path_batch_size,:,5]),),
-            'MaxRew':tf.reduce_max(Flownu[:self.pure_path_batch_size,:,2]),
 
-            # 'Elogrew':expected_reward(Flownu[...,1],Flownu[...,2],tf.math.exp(Flownu[...,5]),),
-            # 'densityError': tf.reduce_mean(tf.math.abs(Flownu[...,5]-tf.math.log(Flownu[...,4]))),
-            # 'density0': tf.reduce_mean(Flownu[:,0,4]),
-            # 'density1': tf.reduce_mean(Flownu[:,1,4]),
-            # 'density2': tf.reduce_mean(Flownu[:,2,4]),
-        }
+        for metric in self.metrics:
+            if metric.name == "loss":
+                metric.update_state(loss)
+            elif metric.name == "initflow":
+                metric.update_state(self.initflow_estimate_1())
+            else:
+                metric.update_state(Flownu, reg_gradients)
+
+        print([x.name for x in self.metrics])
+        return {
+            m.name : m.result()
+            for m in self.metrics
+            }

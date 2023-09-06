@@ -10,7 +10,10 @@ from datetime import datetime
 
 class ReplayBuffer(tf.keras.callbacks.Callback):
     def on_epoch_begin(self, epoch, logs=None):
+        print('Update training dist...')
+        T = time()
         self.model.update_training_distribution(exploration=0.)
+        print('done in %s seconds' % (time()-T))
     def on_epoch_end(self,epoch,logs=None):
         flow = self.model
 

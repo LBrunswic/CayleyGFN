@@ -9,7 +9,7 @@ from time import time
 def R_zero(*arg,**kwarg):
     @tf.function
     def R(x):
-        return tf.zeros(x.shape[0],dtype='float32')
+        return tf.zeros_like(x[:,0],dtype='float32')
     return R
 
 
@@ -27,6 +27,12 @@ def R_first_k(scale,k,*arg,dtype= tf.float32,**kwarg):
         return scale*tf.nn.relu(1-2*tf.norm(tf.cast(x[:,:k],'float32')-target,ord=1,axis=1))
     return R
 
+def R_first_k_reverse(scale,k,*arg,dtype= tf.float32,**kwarg):
+    target =  tf.constant(np.arange(k)[::-1].reshape(1,-1),dtype=dtype)
+    @tf.function
+    def R(x):
+        return scale*tf.nn.relu(1-2*tf.norm(tf.cast(x[:,:k],'float32')-target,ord=1,axis=1))
+    return R
 
 
 def Manhattan(size,*arg,width=1,dtype= tf.float32,**kwarg):

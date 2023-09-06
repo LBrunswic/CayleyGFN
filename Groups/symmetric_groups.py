@@ -8,6 +8,12 @@ def permutation_matrix(sigma):
         P[i, sigma[i]] = 1
     return P
 
+def translation_matrix(v):
+    n = len(v)
+    P = np.eye((n+1, n+1))
+    P[:-1,-1] = v
+    return P
+
 def cycle_dec_to_array(n,cycles=[],start=0,dtype='float32'):
     res = np.arange(n,dtype=dtype)
     for omega in cycles:
@@ -62,22 +68,21 @@ class SymmetricUniform():
     def __init__(self,n):
         self.n = n
         self.dtype = 'int32'
-
+        self.g = tf.random.Generator.from_seed(1234)
+        self.batch = {}
     def sample(self,batch_size):
         n = self.n
-        perm = np.zeros((batch_size, n), dtype=self.dtype)
-        admissible = np.full_like(perm, np.arange(n), dtype=self.dtype)
-        for i in range(n):
-            indices = np.full((batch_size, n - i), np.arange(n - i), dtype=self.dtype)
-            choice = np.random.randint(0, n - i, (batch_size, 1))
-            perm[:, i] = admissible[np.where(indices == choice)]
-            admissible = admissible[np.where(indices != choice)].reshape((batch_size, -1))
-        return perm
+        return tf.argsort(self.g.uniform((batch_size,n)),axis=1)
+        # if batch_size not in self.batch:
+        #     self.batch[batch_size] = tf.Variable(tf.zeros((batch_size,n),dtype=self.dtype),dtype=self.dtype)
+        # perm = self.batch[batch_size]
+        # perm.assign()
+        # return perm
 
     def density(self,position_batch):
         return tf.ones(position_batch.shape[:-1])
 
-class SymmetricModal():
+class Modal():
     def __init__(self,n,modes,logits=None):
         self.n = n
         print(n)

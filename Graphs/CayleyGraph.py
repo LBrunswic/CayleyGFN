@@ -60,16 +60,27 @@ class CayleyGraphLinearEmb():
     def __str__(self):
         return self.name
 
-
+D = 2
+def cycle(length,start,n):
+    assert(start>=0 and start<n)
+    sigma = list(range(start))+list(range(start+1,start+length)) + [start] + list(range(start+length,n))
+    sigma = [x%n for x in sigma]
+    if start == n-1:
+        sigma = sigma[1:]
+    print(sigma)
+    return sigma
 SymmetricGenerators = {
     'trans_cycle_a' : lambda n: ([[1,0]+list(range(2,n)), list(range(1,n))+[0]],[True,False],n),
-    'transpositions' : lambda n: ([list(range(i))+[i+1,i]+list(range(i+2,n)) for i in range(n-1)], [True]*(n-1),n),
+    'transpositions' : lambda n: ([cycle(2,i,n) for i in range(n)], [True]*(n),n),
+    'Hypergrid' : lambda n: ([
+        cycle(n//D,i*(n//D),n)  for i in range(D)], [False]*(D),n),
     'all' : lambda n: (list(itertools.permutations(list(range(n)))), [True]*np.math.factorial(n),1),
-    'Rubicks': rubick_generators
+    'Rubicks': rubick_generators,
 }
 Representations = {
     # name -> size ->  (morphism, dim)
     'natural' : lambda n : (permutation_matrix,n),
+    'affinenatural' : lambda n : (translation_matrix,n+1),
 }
 
 rubick_gen = tf.constant(rubick_generators(48)[0])
