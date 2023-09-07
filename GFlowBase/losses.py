@@ -75,9 +75,6 @@ class divergence(tf.keras.losses.Loss):
         density_one = Flownu[..., 6]
         return tf.reduce_mean(tf.reduce_sum(density_fixed*self.g(tf.math.abs((self.delta+Finstar+Finit) / (self.delta+Foutstar+R))),axis=-1))
 
-@tf.function
-def fall(x):
-    return 0*tf.nn.relu(1+x)
 
 @tf.function
 def Rbar_Error(paths_reward,  density, delta=1e-8):
@@ -87,10 +84,11 @@ def Rbar_Error(paths_reward,  density, delta=1e-8):
 
 
 class MeanABError(tf.keras.losses.Loss):
-    def __init__(self, A=tf.math.square, B=lambda x,y: 1,name='loss',**kwargs):
+    def __init__(self, A=tf.math.square, B=lambda x,y: 1, normalization=lambda flownu:flownu[...,7], name='loss',**kwargs):
         super(MeanABError, self).__init__(name=name, **kwargs)
         self.A = A
         self.B = B
+        self.normalization = normalization
 
     @tf.function
     def call(self, Flownu, bis):
@@ -101,10 +99,7 @@ class MeanABError(tf.keras.losses.Loss):
         density_fixed = Flownu[..., 4]
         logdensity_trainable = Flownu[..., 5]
         density_one = Flownu[..., 6]
+        normalization = self.normalization(Flownu)
+        Ldelta = tf.reduce_mean(tf.reduce_sum(density_fixed*self.A((Foutstar+R-Finstar-Finit)/normalization)*self.B(Finstar/normalization, Foutstar/normalization),axis=-1))
+        return Ldelta
 
-        Ldelta = tf.reduce_mean(tf.reduce_sum(density_fixed*self.A(Foutstar+R-Finstar-Finit)*self.B(Finstar, Foutstar),axis=-1))
-        Ebigtau = tf.reduce_mean(logdensity_trainable[:,-1]) #log P(tau > tmax)
-        res = tf.stack([
-            Ldelta,
-        ])
-        return tf.reduce_sum(res)

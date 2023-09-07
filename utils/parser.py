@@ -8,7 +8,7 @@ def generate_argparser():
     parser.add_argument(
         "--gpu",
         help="which gpu for training",
-        default=0,
+        default=-1,
         dest="GPU",
         type=int,
     )

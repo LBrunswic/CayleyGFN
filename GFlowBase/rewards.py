@@ -48,7 +48,7 @@ def Manhattan(size,*arg,width=1,dtype= tf.float32,**kwarg):
         # return raw_score
     return R
 
-def TwistedManhattan(size,*arg,width=1,scale=1e-4,factor=1.,dtype= tf.float32,**kwarg):
+def TwistedManhattan(size,*arg,width=1,scale=1e-4,factor=1.,dtype= tf.float32,delta=1e-20,**kwarg):
     # print(size,width,arg,factor,scale,dtype,kwarg)
     a = scale
     # score = factor*tf.constant(a**np.arange(size),dtype=dtype)
@@ -62,7 +62,7 @@ def TwistedManhattan(size,*arg,width=1,scale=1e-4,factor=1.,dtype= tf.float32,**
     def R(x):
         x = tf.cast(x,'float32')
         raw_score = tf.einsum('ijk,jk->i', hot(tf.expand_dims(x,-1)-v), score )
-        return raw_score
+        return delta+raw_score
     # print(R)
     return R
 

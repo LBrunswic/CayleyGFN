@@ -35,7 +35,7 @@ class GFlowCayleyLinear(tf.keras.Model):
         if name is None:
             name = 'flow_on_'+graph.name
         super(GFlowCayleyLinear, self).__init__(name=name, **kwargs)
-        self.metricsss = [ExpectedReward(),ExpectedLen()]
+        self.metric_list = [tf.keras.metrics.Mean(name="loss")]
         self.graph = graph
         self.reward = reward # embedding -> RR_+
         self.embedding_dim = int(graph.embedding_dim)
@@ -285,14 +285,11 @@ class GFlowCayleyLinear(tf.keras.Model):
         self.FIOR.assign(FinFoutRinit)
         path_density = self.path_density_foo(delta=delta)
         self.path_density.assign(tf.reshape(path_density,self.path_density.shape))
-        alpha = [0.50,0.50,0.0,0.0,0.0]
+        alpha = [0.95,0.05,0.0,0.0,0.0]
         self.initial_flow.assign(tf.math.log(
             (
                 alpha[0]*self.initflow_estimate()+
                 alpha[1]*self.aux_initflow_estimate1()
-                # alpha[1]*self.initflow_estimate_5()+
-                # alpha[2]*self.initflow_estimate_3()+
-                # alpha[3]*tf.reduce_min([self.initflow_estimate_4(),1])
             ) / self.ref_initflow
         ))
 
@@ -304,8 +301,7 @@ class GFlowCayleyLinear(tf.keras.Model):
         # self.n_sample[0].assign(1)
 
     @tf.function
-    def path_density_foo(self,delta=1e-20,exploration=0.):
-        print(delta)
+    def path_density_foo(self,delta=0.,exploration=0.):
         FIOR = self.FlowCompute()
         p = FIOR[:,:, 1] / (
             delta+FIOR[:, :, 1] + FIOR[:, :, 2]
@@ -314,7 +310,7 @@ class GFlowCayleyLinear(tf.keras.Model):
 
 
     @tf.function
-    def logdensity_foo(self,delta=1e-20,exploration=0.):
+    def logdensity_foo(self,delta=0.,exploration=0.):
         FIOR = self.FlowCompute()
         p = tf.math.log(delta+FIOR[:,:, 1]) - tf.math.log(delta+FIOR[:, :, 1] + FIOR[:, :, 2])
         return tf.math.cumsum(p,exclusive=True,axis=1)
@@ -334,7 +330,7 @@ class GFlowCayleyLinear(tf.keras.Model):
         # or at the start of `evaluate()`.
         # If you don't implement this property, you have to call
         # `reset_states()` yourself at the time of your choosing.
-        return self.metricsss
+        return self.metric_list
 
     # @tf.function
     def train_step(self, data):
@@ -350,7 +346,7 @@ class GFlowCayleyLinear(tf.keras.Model):
                 axis=-1
             )
             reg = self.reg_fn(Flownu)
-            loss = self.compiled_loss(Flownu,Flownu)
+            loss = self.compiled_loss(Flownu,self.initflow_estimate())
         trainable_vars = self.trainable_variables
         # gradients = tape.jacobian(loss, trainable_vars)
         loss_gradients = tape.gradient(loss, trainable_vars,unconnected_gradients=tf.UnconnectedGradients.ZERO)
@@ -362,7 +358,7 @@ class GFlowCayleyLinear(tf.keras.Model):
             if metric.name == "loss":
                 metric.update_state(loss)
             elif metric.name == "initflow":
-                metric.update_state(self.initflow_estimate_1())
+                metric.update_state(self.initflow_estimate())
             else:
                 metric.update_state(Flownu, reg_gradients)
 

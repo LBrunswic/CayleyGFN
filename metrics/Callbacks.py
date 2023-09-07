@@ -14,6 +14,10 @@ class ReplayBuffer(tf.keras.callbacks.Callback):
         T = time()
         self.model.update_training_distribution(exploration=0.)
         print('done in %s seconds' % (time()-T))
+        print(self.model.paths_reward[:5,:5].numpy())
+        print(np.argmin(self.model.paths_true[:5].numpy(),axis=-1))
+        print(self.model.path_density[:5,:5].numpy())
+
     def on_epoch_end(self,epoch,logs=None):
         flow = self.model
 
