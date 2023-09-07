@@ -16,6 +16,7 @@ if GPU>=0:
         raise
 else:
     tf.config.set_visible_devices([], 'GPU')
+
 import platform
 import numpy as np
 from time import time
