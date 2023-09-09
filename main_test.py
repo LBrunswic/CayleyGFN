@@ -121,7 +121,7 @@ def projection_orth(u,v):
 
 @tf.function
 def reg_fn(Flownu):
-    logdensity_trainable = Flownu[..., 5]
+    logdensity_trainable = Flownu[..., 4]
     Ebigtau = tf.reduce_mean(logdensity_trainable[:,-1])
     return tf.nn.relu(1+Ebigtau/40)
 

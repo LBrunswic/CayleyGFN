@@ -268,7 +268,7 @@ class GFlowCayleyLinear(tf.keras.Model):
         self.paths_reward.assign(tf.gather(self.paths_reward,indices,axis=0))
 
     @tf.function
-    def update_training_distribution(self,delta=1e-20,exploration=0.):
+    def update_training_distribution(self,delta=1e-20,exploration=0.,alpha=(0.9,0.1)):
         self.gen_path(exploration=exploration)
 
         self.update_reward()
@@ -285,7 +285,6 @@ class GFlowCayleyLinear(tf.keras.Model):
         self.FIOR.assign(FinFoutRinit)
         path_density = self.path_density_foo(delta=delta)
         self.path_density.assign(tf.reshape(path_density,self.path_density.shape))
-        alpha = [0.95,0.05,0.0,0.0,0.0]
         self.initial_flow.assign(tf.math.log(
             (
                 alpha[0]*self.initflow_estimate()+
@@ -308,7 +307,22 @@ class GFlowCayleyLinear(tf.keras.Model):
         )
         return tf.math.cumprod(p,exclusive=True,axis=1)
 
-
+    def evaluate(
+        self,
+        x=None,
+        y=None,
+        batch_size=None,
+        verbose="auto",
+        sample_weight=None,
+        steps=None,
+        callbacks=None,
+        max_queue_size=10,
+        workers=1,
+        use_multiprocessing=False,
+        return_dict=False,
+        **kwargs,
+    ):
+       return [m.result() for m in self.metrics]
     @tf.function
     def logdensity_foo(self,delta=0.,exploration=0.):
         FIOR = self.FlowCompute()
@@ -338,10 +352,10 @@ class GFlowCayleyLinear(tf.keras.Model):
             Flownu = tf.concat(
                 [
                     self.FlowCompute(),
-                    tf.expand_dims(self.path_density,-1),
+                    # tf.expand_dims(self.path_density,-1),
                     tf.expand_dims(self.logdensity_foo(),-1),
-                    tf.expand_dims(self.path_density_foo(),-1),
-                    tf.expand_dims(self.path_density_one,-1)
+                    # tf.expand_dims(self.path_density_foo(),-1),
+                    # tf.expand_dims(self.path_density_one,-1)
                 ],
                 axis=-1
             )

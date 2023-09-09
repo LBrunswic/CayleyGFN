@@ -54,7 +54,7 @@ def TwistedManhattan(size,*arg,width=1,scale=1e-4,factor=1.,dtype= tf.float32,de
     # score = factor*tf.constant(a**np.arange(size),dtype=dtype)
     score = factor*tf.constant(tf.math.exp(a*tf.range(size,dtype=dtype)),dtype=dtype)
     score = np.stack([np.roll(np.concatenate([score[::-1],score[1:]]),i)[size-1:size-1+width] for i in range(size)])
-    print(score)
+    # print(score)
     v = tf.constant(np.arange(width).reshape(1,1,-1),dtype=dtype)
     hot = lambda x: tf.nn.relu(1+x)*tf.nn.relu(1-x)
     # print(score.shape)

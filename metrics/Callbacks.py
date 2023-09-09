@@ -10,13 +10,25 @@ from datetime import datetime
 
 class ReplayBuffer(tf.keras.callbacks.Callback):
     def on_epoch_begin(self, epoch, logs=None):
+        schedule = [
+            (0.,1.),
+            (0.9,0.1),
+            (0.9,0.1),
+            (0.9,0.1),
+            (0.9,0.1),
+            (0.9,0.1),
+            (0.99, 0.01),
+            (0.99, 0.01),
+            (0.99, 0.01),
+            (0.99, 0.01),
+            (0.99, 0.01),
+            (0.99, 0.01),
+            (0.99, 0.01),
+        ]
         print('Update training dist...')
         T = time()
-        self.model.update_training_distribution(exploration=0.)
+        self.model.update_training_distribution(exploration=0.,alpha=schedule[epoch-1] )
         print('done in %s seconds' % (time()-T))
-        print(self.model.paths_reward[:5,:5].numpy())
-        print(np.argmin(self.model.paths_true[:5].numpy(),axis=-1))
-        print(self.model.path_density[:5,:5].numpy())
 
     def on_epoch_end(self,epoch,logs=None):
         flow = self.model

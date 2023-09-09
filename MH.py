@@ -1,6 +1,5 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from Groups.symmetric_groups import random_perm
 
 SIZE = 54
 
