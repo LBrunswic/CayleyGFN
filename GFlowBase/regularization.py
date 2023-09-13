@@ -28,7 +28,14 @@ def reg_fn_gen(alpha,logpmin):
         Ebigtau = tf.reduce_mean(logdensity_trainable[:,-1])
         return alpha*tf.nn.relu(logpmin+Ebigtau)
     return reg_fn
-
+def pathlength_generatrix_fn_gen(alpha,logpmin):
+    alpha = tf.math.exp(alpha)
+    @tf.function
+    def reg_fn(Flownu):
+        logdensity_trainable = Flownu[..., 4]
+        Ebigtau = tf.reduce_mean(logdensity_trainable[:,-1])
+        return alpha*tf.nn.relu(logpmin+Ebigtau)
+    return reg_fn
 
 
 @tf.function
