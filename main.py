@@ -58,8 +58,8 @@ log_dir = 'logs/S%s_%s_%s_%s/' % (SIZE,GENERATORS,seq_param,seed)
 #___________MODEL HP________________
 FlowEstimator_options = {
     'options': {
-        'kernel_depth' : 4,
-        'width' : 64,
+        'kernel_depth' : 2,
+        'width' : 128,
         'final_activation' : 'linear',
     },
     'kernel_options': {
@@ -70,13 +70,13 @@ FlowEstimator_options = {
 }
 
 #___________TRAINING HP______________
-GRAD_BATCH_SIZE = hp.HParam('grad_batch_size', hp.Discrete([2]))
+GRAD_BATCH_SIZE = hp.HParam('grad_batch_size', hp.Discrete([4]))
 BATCH_SIZE = hp.HParam('batch_size', hp.Discrete([1024]))
 LENGTH_CUTOFF_FACTOR = hp.HParam('length_cutoff_factor', hp.Discrete([2]))
 INIT_FLOW = hp.HParam('initial_flow', hp.Discrete([1e-3]))
-LR = hp.HParam('learning_rate', hp.Discrete([1e-4]))
+LR = hp.HParam('learning_rate', hp.Discrete([1e-3]))
 EPOCHS = hp.HParam('number_epoch', hp.Discrete([100]))
-STEP_PER_EPOCH = hp.HParam('step_per_epoch', hp.Discrete([100]))
+STEP_PER_EPOCH = hp.HParam('step_per_epoch', hp.Discrete([30]))
 # B_BETA = hp.HParam('B_beta', hp.Discrete([0.001,0.01,0.1,1.]))
 B_BETA = hp.HParam('B_beta', hp.Discrete([0.]))
 # betaval = [(-7.,-2.),(-2.,3.)]
@@ -90,7 +90,7 @@ SAMPLE_SIZE = 150
 
 REG_FN_logpmin = hp.HParam('reg_fn_logmin', hp.Discrete([20]))
 # EMBEDDING =[('hot', {'choice': None})]
-EMBEDDING =[('cos',{'choice':None}), ('sin',{'choice':None})]
+EMBEDDING =[('cos',{'choice':None}), ('sin',{'choice':None}),('natural',{})]
 
 PATH_REDRAW = hp.HParam('path_redraw', hp.Discrete([0]))
 NEIGHBORHOOD = hp.HParam('neighborhood', hp.Discrete([0]))
