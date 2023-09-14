@@ -48,7 +48,7 @@ seed  = 0#int(sys.argv[2])
 series_name = '1'
 #_____________PROBLEM DEFINITION___________________
 SIZE = 15
-GENERATORS = 'trans_cycle_a'
+GENERATORS = 'transpositions'
 reward_fn = TwistedManhattan(SIZE,width=1,scale=-100,factor=1)
 heuristic_fn = R_zero()
 INITIAL_POSITION = SymmetricUniform(SIZE)
@@ -70,27 +70,27 @@ FlowEstimator_options = {
 }
 
 #___________TRAINING HP______________
-GRAD_BATCH_SIZE = hp.HParam('grad_batch_size', hp.Discrete([16]))
-BATCH_SIZE = hp.HParam('batch_size', hp.Discrete([32]))
+GRAD_BATCH_SIZE = hp.HParam('grad_batch_size', hp.Discrete([2]))
+BATCH_SIZE = hp.HParam('batch_size', hp.Discrete([1024]))
 LENGTH_CUTOFF_FACTOR = hp.HParam('length_cutoff_factor', hp.Discrete([2]))
 INIT_FLOW = hp.HParam('initial_flow', hp.Discrete([1e-3]))
-LR = hp.HParam('learning_rate', hp.Discrete([1e-3]))
-EPOCHS = hp.HParam('number_epoch', hp.Discrete([3]))
-STEP_PER_EPOCH = hp.HParam('step_per_epoch', hp.Discrete([10]))
+LR = hp.HParam('learning_rate', hp.Discrete([1e-4]))
+EPOCHS = hp.HParam('number_epoch', hp.Discrete([100]))
+STEP_PER_EPOCH = hp.HParam('step_per_epoch', hp.Discrete([100]))
 # B_BETA = hp.HParam('B_beta', hp.Discrete([0.001,0.01,0.1,1.]))
 B_BETA = hp.HParam('B_beta', hp.Discrete([0.]))
 # betaval = [(-7.,-2.),(-2.,3.)]
 # B_BETA = hp.HParam('B_beta',  hp.RealInterval(*(betaval[seq_param])))
 NORMALIZATION_FN = hp.HParam('normalization_fn', hp.Discrete([4]))
 NORMALIZATION_NU_FN = hp.HParam('normalization_nu_fn', hp.Discrete([2]))
-REG_FN_alpha = hp.HParam('reg_fn_alpha', hp.RealInterval(-10.,-4.))
+REG_FN_alpha = hp.HParam('reg_fn_alpha', hp.RealInterval(-6.,-4.))
 # REG_FN_alpha = hp.HParam('reg_fn_alpha', hp.Discrete([-100.]))
 seed = 0
 SAMPLE_SIZE = 150
 
 REG_FN_logpmin = hp.HParam('reg_fn_logmin', hp.Discrete([20]))
-EMBEDDING =[('hot', {'choice': None})]
-# EMBEDDING =[('cos',{'choice':None}), ('sin',{'choice':None})]
+# EMBEDDING =[('hot', {'choice': None})]
+EMBEDDING =[('cos',{'choice':None}), ('sin',{'choice':None})]
 
 PATH_REDRAW = hp.HParam('path_redraw', hp.Discrete([0]))
 NEIGHBORHOOD = hp.HParam('neighborhood', hp.Discrete([0]))
@@ -129,7 +129,12 @@ Metrics = [
         lambda :tf.keras.metrics.Mean(name='initflow')
     ]
 
-G = Symmetric(
+
+def train_test_model(hparams,log_dir=None,seed=1234):
+    if log_dir is None:
+        log_dir = "logs/fit/" + datetime.now().strftime("%Y%m%d-%H%M%S")
+    tf.keras.utils.set_random_seed(seed)
+    G = Symmetric(
         SIZE,
         generators=GENERATORS,
         representation=[('natural', {})],
@@ -137,19 +142,7 @@ G = Symmetric(
         random_gen=INITIAL_POSITION,
         embedding=EMBEDDING,
         dtype='float32'
-)
-(dense_gen, FlowEstimator_options)
-FlowEstimator = dense_gen(
-    G.nactions,
-    **FlowEstimator_options['options'],
-    kernel_options=FlowEstimator_options['kernel_options']
-)
-
-def train_test_model(hparams,log_dir=None,seed=1234):
-    if log_dir is None:
-        log_dir = "logs/fit/" + datetime.now().strftime("%Y%m%d-%H%M%S")
-    tf.keras.utils.set_random_seed(seed)
-
+    )
     loss_fn = MeanABError(
         A=Alogsquare(),
         # B=Bpower(beta=tf.math.exp(hparams[B_BETA])),
@@ -167,7 +160,7 @@ def train_test_model(hparams,log_dir=None,seed=1234):
             heuristic_fn=heuristic_fn,
         ),
         batch_size=hparams[BATCH_SIZE],
-        FlowEstimatorGen=(None, FlowEstimator),
+        FlowEstimatorGen=(dense_gen, FlowEstimator_options),
         length_cutoff_factor=hparams[LENGTH_CUTOFF_FACTOR],
         initflow=hparams[INIT_FLOW],
         neighborhood=hparams[NEIGHBORHOOD],
@@ -178,7 +171,7 @@ def train_test_model(hparams,log_dir=None,seed=1234):
         # reg_fn=reg_withcutoff_fn
     )
     flow(0)
-    # flow.FlowEstimator.kernel.summary()
+    flow.FlowEstimator.kernel.summary()
     flow.compile(
         optimizer=tf.keras.optimizers.Adam(learning_rate=hparams[LR]),
         loss=loss_fn,
@@ -202,7 +195,7 @@ def train_test_model(hparams,log_dir=None,seed=1234):
         np.zeros(hparams[STEP_PER_EPOCH]),
         initial_epoch=0,
         epochs=hparams[EPOCHS],
-        verbose=0,
+        verbose=1,
         batch_size=1,
         callbacks=[
             Replay,
@@ -223,12 +216,11 @@ with tf.summary.create_file_writer(log_dir).as_default():
   )
 
 def run(run_dir, hparams,seed=1234):
-    with tf.summary.create_file_writer(run_dir).as_default():
-        hp.hparams(hparams)  # record the values used in this trial
-        val_name_list = zip(train_test_model(hparams,log_dir=run_dir,seed=seed),metric_names)
-        for val,name in val_name_list:
-            tf.summary.scalar(name, val, step=1)
-    return val_name_list
+  with tf.summary.create_file_writer(run_dir).as_default():
+    hp.hparams(hparams)  # record the values used in this trial
+    val_name_list = zip(train_test_model(hparams,log_dir=run_dir,seed=seed),metric_names)
+    for val,name in val_name_list:
+        tf.summary.scalar(name, val, step=1)
 
 
 
@@ -262,11 +254,7 @@ for hp_set in hp_sets:
     run_name = "run" + series_name +"-%d" % session_num
     print('--- Starting trial: %s' % run_name)
     print({h.name: hparams[h] for h in hparams})
-    T = time()
-    val_name_list = run(log_dir + run_name, hparams,seed=SEEDS[seed])
-    print('--- Done with trial: %s' % run_name + ' in %s seconds' % (time()-T))
-    print('scores:')
-    print(' '.join([ '{name}: {val:.3f}' for val,name in val_name_list]))
+    run(log_dir + run_name, hparams,seed=SEEDS[seed])
     session_num += 1
-    # tf.keras.backend.clear_session()
+    tf.keras.backend.clear_session()
 
