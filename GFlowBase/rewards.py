@@ -62,8 +62,8 @@ def TwistedManhattan(size,*arg,width=1,scale=-100,factor=1.,dtype= tf.float32,de
     def R(x):
         x = tf.cast(x,'float32')
         raw_score = tf.einsum('ijk,jk->i', hot(tf.expand_dims(x,-1)-v), score )
-        # return delta+raw_score
-        return tf.math.exp(delta+raw_score)*raw_score
+        return delta+raw_score
+        # return tf.math.exp(delta+raw_score)*raw_score
     # print(R)
     return R
 
