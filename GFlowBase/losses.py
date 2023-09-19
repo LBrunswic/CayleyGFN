@@ -45,10 +45,10 @@ def Alogsquare(alpha=2,delta=1.):
     def aux(x):
         return tf.math.log(1+delta*tf.pow(tf.math.abs(x),alpha))
     return aux
-def Apower(alpha=0.5):
+def Apower(alpha=2.):
     @tf.function
     def aux(x):
-        return tf.math.pow(1+tf.square(tf.math.abs(x)),alpha)
+        return tf.math.pow(1e-20+tf.math.abs(x),alpha)
     return aux
 
 def Bpower(alpha=2.,beta=0.1,delta=1e-8):

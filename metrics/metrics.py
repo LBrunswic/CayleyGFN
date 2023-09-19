@@ -66,15 +66,14 @@ class MaxSeenReward(tf.keras.metrics.Metric):
         super(MaxSeenReward, self).__init__(name=name, **kwargs)
         self.cutoff = cutoff
         self.max_reward = self.add_weight(name='MaxSeenReward', initializer='zeros')
-        self.n = self.add_weight(name='n_sample', initializer='zeros')
+        # self.n = self.add_weight(name='n_sample', initializer='zeros')
 
     def update_state(self, Flownu, reg_gradients, sample_weight=None):
-
-        self.max_reward.assign_add(tf.reduce_max(Flownu[...,2]))
-        self.n.assign_add(1.)
+        self.max_reward.assign(tf.reduce_max([tf.reduce_max(Flownu[...,2]),self.max_reward]))
+        # self.n.assign_add(1.)
 
     def result(self):
-        return self.max_reward / self.n
+        return self.max_reward
 
 @tf.function
 def expected_reward(FoutStar,R,density,delta=1e-20):

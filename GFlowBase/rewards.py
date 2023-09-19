@@ -48,7 +48,7 @@ def Manhattan(size,*arg,width=1,dtype= tf.float32,**kwarg):
         # return raw_score
     return R
 
-def TwistedManhattan(size,*arg,width=1,scale=-100,factor=1.,dtype= tf.float32,delta=1e-20,**kwarg):
+def TwistedManhattan(size,*arg,width=1,scale=-100,factor=1.,dtype= tf.float32,delta=1e-20,exp=False,mini=1,**kwarg):
     # print(size,width,arg,factor,scale,dtype,kwarg)
     a = scale
     # score = factor*tf.constant(a**np.arange(size),dtype=dtype)
@@ -57,14 +57,18 @@ def TwistedManhattan(size,*arg,width=1,scale=-100,factor=1.,dtype= tf.float32,de
     # print(score)
     v = tf.constant(np.arange(width).reshape(1,1,-1),dtype=dtype)
     hot = lambda x: tf.nn.relu(1+x)*tf.nn.relu(1-x)
+    indicator = lambda x: tf.cast(tf.greater(x, mini-delta), dtype=tf.float32)
+    final = lambda x : x
+    if exp:
+        final = lambda x : x*tf.math.exp(x)
+    else:
+        final = lambda x : x
     # print(score.shape)
     @tf.function
     def R(x):
         x = tf.cast(x,'float32')
         raw_score = tf.einsum('ijk,jk->i', hot(tf.expand_dims(x,-1)-v), score )
-        return delta+raw_score
-        # return tf.math.exp(delta+raw_score)*raw_score
-    # print(R)
+        return delta+final(indicator(raw_score)*raw_score)
     return R
 
 def H_first_one(*arg,dtype=tf.float32,**kwarg):

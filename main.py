@@ -26,6 +26,7 @@ import platform
 import numpy as np
 import time
 time.sleep(1)
+# time.sleep(13000)
 from datetime import datetime
 from Graphs.CayleyGraph import Symmetric, path_representation
 from GFlowBase.kernel import *
@@ -36,61 +37,68 @@ from GFlowBase.regularization import *
 from Groups.symmetric_groups import SymmetricUniform,Modal,rubick_generators,inversion,iteration_random
 from metrics import ReplayBuffer,ExpectedLen,ExpectedMaxSeenReward,MaxSeenReward,ExpectedReward,FlowSize,RandomCheck
 from datetime import datetime
+from tensorflow.python.platform import tf_logging as logging
 import logging
 import signal
 import pickle
 import sys
 
-seq_param = 0#int(sys.argv[1])
-seed  = 0#int(sys.argv[2])
+seq_param = int(sys.argv[1])
+seed = int(sys.argv[2])
 
 
 series_name = '1'
 #_____________PROBLEM DEFINITION___________________
-SIZE = 15
+SIZE = 5
 GENERATORS = 'transpositions'
-reward_fn = TwistedManhattan(SIZE,width=1,scale=-100,factor=1)
+reward_fn = TwistedManhattan(SIZE,width=1,scale=-100,factor=10**seq_param,exp=False,mini=0)
+# reward_fn = TwistedManhattan(SIZE,width=1,scale=-100,factor=1)
 heuristic_fn = R_zero()
 INITIAL_POSITION = SymmetricUniform(SIZE)
 INVERSE=True
 
-log_dir = 'logs/S%s_%s_%s_%s/' % (SIZE,GENERATORS,seq_param,seed)
+log_dir = 'logs/S%s_%s_%s_%s_scaling_comp2/' % (SIZE,GENERATORS,seq_param,seed)
 #___________MODEL HP________________
 FlowEstimator_options = {
     'options': {
-        'kernel_depth' : 2,
-        'width' : 128,
+        'kernel_depth' : 0,
+        'width' : 64,
         'final_activation' : 'linear',
     },
     'kernel_options': {
         # 'activation': tf.keras.layers.LeakyReLU(),
+        'kernel_initializer' : tf.keras.initializers.Orthogonal,
         'activation': 'tanh',
+        # 'activation': 'linear',
         # 'kernel_regularizer' : tf.keras.regularizers.L1L2(l1=0.01, l2=0.1)
     }
 }
 
 #___________TRAINING HP______________
-GRAD_BATCH_SIZE = hp.HParam('grad_batch_size', hp.Discrete([4]))
-BATCH_SIZE = hp.HParam('batch_size', hp.Discrete([1024]))
-LENGTH_CUTOFF_FACTOR = hp.HParam('length_cutoff_factor', hp.Discrete([2]))
+GRAD_BATCH_SIZE = hp.HParam('grad_batch_size', hp.Discrete([1]))
+BATCH_SIZE = hp.HParam('batch_size', hp.Discrete([64]))
+LENGTH_CUTOFF_FACTOR = hp.HParam('length_cutoff_factor', hp.Discrete([10]))
 INIT_FLOW = hp.HParam('initial_flow', hp.Discrete([1e-3]))
 LR = hp.HParam('learning_rate', hp.Discrete([1e-3]))
-EPOCHS = hp.HParam('number_epoch', hp.Discrete([100]))
-STEP_PER_EPOCH = hp.HParam('step_per_epoch', hp.Discrete([30]))
+EPOCHS = hp.HParam('number_epoch', hp.Discrete([10]))
+STEP_PER_EPOCH = hp.HParam('step_per_epoch', hp.Discrete([20]))
 # B_BETA = hp.HParam('B_beta', hp.Discrete([0.001,0.01,0.1,1.]))
 B_BETA = hp.HParam('B_beta', hp.Discrete([0.]))
 # betaval = [(-7.,-2.),(-2.,3.)]
 # B_BETA = hp.HParam('B_beta',  hp.RealInterval(*(betaval[seq_param])))
-NORMALIZATION_FN = hp.HParam('normalization_fn', hp.Discrete([4]))
-NORMALIZATION_NU_FN = hp.HParam('normalization_nu_fn', hp.Discrete([2]))
-REG_FN_alpha = hp.HParam('reg_fn_alpha', hp.RealInterval(-6.,-4.))
-# REG_FN_alpha = hp.HParam('reg_fn_alpha', hp.Discrete([-100.]))
+NORMALIZATION_FN = hp.HParam('normalization_fn', hp.Discrete([0,4]))
+NORMALIZATION_NU_FN = hp.HParam('normalization_nu_fn', hp.Discrete([0,2]))
+REG_FN_alpha = hp.HParam('reg_fn_alpha', hp.RealInterval(0.,10.))
 seed = 0
-SAMPLE_SIZE = 150
+SAMPLE_SIZE = 200
 
-REG_FN_logpmin = hp.HParam('reg_fn_logmin', hp.Discrete([20]))
+# REG_FN_logpmin = hp.HParam('reg_fn_logmin', hp.RealInterval(25.,30.))
+REG_FN_logpmin = hp.HParam('reg_fn_logmin', hp.Discrete([25]))
 # EMBEDDING =[('hot', {'choice': None})]
-EMBEDDING =[('cos',{'choice':None}), ('sin',{'choice':None}),('natural',{})]
+EMBEDDING =[
+    ('hot', {'choice': None}),
+    # ('cos',{'choice':None}), ('sin',{'choice':None}),('natural',{})
+]
 
 PATH_REDRAW = hp.HParam('path_redraw', hp.Discrete([0]))
 NEIGHBORHOOD = hp.HParam('neighborhood', hp.Discrete([0]))
@@ -105,6 +113,7 @@ normalization_fns =[
     lambda flownu,finit: 1e-3 + finit,
     lambda flownu,finit: 1e-3 + tf.reduce_mean(tf.reduce_sum(tf.reduce_sum(flownu[..., :4], axis=-1),axis=-1)) ,
     lambda flownu,finit: 1e-3 + (finit+tf.reduce_mean(tf.reduce_sum(tf.reduce_sum(flownu[..., :4], axis=-1),axis=-1))),
+    lambda flownu,finit: 1e-3 + 10*tf.reduce_mean(tf.reduce_sum(tf.reduce_sum(flownu[..., :4], axis=-1),axis=-1)) ,
     # lambda flownu,finit: 1e-3 + (finit+tf.reduce_mean(tf.reduce_sum(tf.reduce_sum(flownu[..., :4], axis=-1),axis=-1))),
 ]
 
@@ -130,6 +139,32 @@ Metrics = [
     ]
 
 
+class FlowSizeStop(tf.keras.callbacks.Callback):
+    def __init__(self, monitor="FlowSize", min_val=1e-3,max_val=1e4):
+        super().__init__()
+        self.monitor = monitor
+        self.min_val = min_val
+        self.max_val = max_val
+        self.stopped = False
+
+    def on_train_begin(self, logs=None):
+        self.stopped = False
+    def on_epoch_end(self, epoch, logs=None):
+        if self.get_monitor_value(logs) < self.min_val or self.get_monitor_value(logs) > self.max_val:
+            self.model.stop_training = True
+            self.stopped = True
+
+    def get_monitor_value(self, logs):
+        logs = logs or {}
+        monitor_value = logs.get(self.monitor)
+        if monitor_value is None:
+            logging.warning(
+                "Early stopping conditioned on metric `%s` "
+                "which is not available. Available metrics are: %s",
+                self.monitor,
+                ",".join(list(logs.keys())),
+            )
+        return monitor_value
 def train_test_model(hparams,log_dir=None,seed=1234):
     if log_dir is None:
         log_dir = "logs/fit/" + datetime.now().strftime("%Y%m%d-%H%M%S")
@@ -144,7 +179,8 @@ def train_test_model(hparams,log_dir=None,seed=1234):
         dtype='float32'
     )
     loss_fn = MeanABError(
-        A=Alogsquare(),
+        # A=Alogsquare(),
+        A=Apower(),
         # B=Bpower(beta=tf.math.exp(hparams[B_BETA])),
         normalization_fn=normalization_fns[hparams[NORMALIZATION_FN]],
         normalization_nu_fn=normalization_nu_fns[hparams[NORMALIZATION_NU_FN]],
@@ -171,25 +207,27 @@ def train_test_model(hparams,log_dir=None,seed=1234):
         # reg_fn=reg_withcutoff_fn
     )
     flow(0)
-    flow.FlowEstimator.kernel.summary()
-    flow.compile(
-        optimizer=tf.keras.optimizers.Adam(learning_rate=hparams[LR]),
-        loss=loss_fn,
-    )
+    # flow.FlowEstimator.kernel.summary()
+
 
     Replay = ReplayBuffer()
     Replay.reward = reward_fn
 
 
     for m in Metrics:
-        print(m)
+        # print(m)
         flow.metric_list.append(m())
 
 
     flow.compile(
         optimizer=tf.keras.optimizers.Adam(learning_rate=hparams[LR]),
+        # optimizer=tf.keras.optimizers.SGD(learning_rate=hparams[LR],nesterov=True),
         loss=loss_fn,
     )
+    print(Metrics)
+    print(flow.metrics)
+
+
 
     flow.fit(
         np.zeros(hparams[STEP_PER_EPOCH]),
@@ -198,6 +236,8 @@ def train_test_model(hparams,log_dir=None,seed=1234):
         verbose=1,
         batch_size=1,
         callbacks=[
+            FlowSizeStop(),
+            tf.keras.callbacks.TerminateOnNaN(),
             Replay,
             tf.keras.callbacks.TensorBoard(
                 log_dir=log_dir,
@@ -205,26 +245,28 @@ def train_test_model(hparams,log_dir=None,seed=1234):
             )
         ]
     )
-    return flow.evaluate()
+    # metrics = flow.metrics
+    return flow.evaluate(),flow.metrics
 
 
-metric_names = [ m().name for m in Metrics]
 with tf.summary.create_file_writer(log_dir).as_default():
-  hp.hparams_config(
-    hparams=HP,
-    metrics=[hp.Metric(m, display_name=m) for m in metric_names],
-  )
+    hp.hparams_config(
+        hparams=HP,
+        metrics=[hp.Metric(m, display_name=m) for m in ["loss"]+[m().name for m in Metrics] ],
+    )
 
 def run(run_dir, hparams,seed=1234):
   with tf.summary.create_file_writer(run_dir).as_default():
     hp.hparams(hparams)  # record the values used in this trial
-    val_name_list = zip(train_test_model(hparams,log_dir=run_dir,seed=seed),metric_names)
-    for val,name in val_name_list:
+    vals,metrics = train_test_model(hparams, log_dir=run_dir, seed=seed)
+    val_name_list = zip(vals,[m.name for m in metrics])
+    for val, name in val_name_list:
         tf.summary.scalar(name, val, step=1)
 
 
+reg_post = [proj_reg,straight_reg][0]
+# reg_post = [proj_reg,straight_reg][seq_param]
 
-reg_post = proj_reg
 SEEDS = [7508, 9845, 6726, 9339, 8885, 4892, 1347, 5243, 7591, 3661,
            6626, 1007, 3951, 1215, 5597, 6864, 4676, 3922, 2490, 3927, 8842,
            3203, 8428, 3366, 5770, 3226, 6206, 9234, 5521, 4414, 5157, 7775,

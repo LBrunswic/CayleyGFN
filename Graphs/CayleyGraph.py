@@ -71,6 +71,7 @@ def cycle(length,start,n):
     return sigma
 SymmetricGenerators = {
     'trans_cycle_a' : lambda n: ([[1,0]+list(range(2,n)), list(range(1,n))+[0]],[True,False],n),
+    'cycles_a' : lambda n: ([cycle(k,n-k,n) for k in range(2,n+1)],[True]+[False for k in range(3,n+1)],n),
     'transpositions' : lambda n: ([cycle(2,i,n) for i in range(n)], [True]*(n),n),
     'Hypergrid' : lambda n: ([
         cycle(n//D,i*(n//D),n)  for i in range(D)], [False]*(D),n),
