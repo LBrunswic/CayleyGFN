@@ -111,9 +111,9 @@ def hotalpha(n,*args,omega=1,**kwarg):
         return tf.cast(tf.reshape(tf.gather(Id,paths),(*paths.shape[:-1], n*n,) ),'float32')
     return aux,n*n
 Embeddings = {
-    'natural': lambda n,*args,**kwarg: (lambda x : tf.cast(x,'float32')/tf.cast(n,'float32'),n),
-    'cos': lambda n,*args,omega=1,**kwarg: (lambda x :tf.math.cos(2*omega*pi*tf.cast(x,'float32')/n),n),
-    'sin': lambda n,*args,omega=1,**kwarg: (lambda x :tf.math.sin(2*omega*pi*tf.cast(x,'float32')/n),n),
+    'natural': lambda n,*args,**kwarg: (lambda x: tf.cast(x,'float32')/tf.cast(n,'float32'),n),
+    'cos': lambda n,*args,omega=1,**kwarg: (lambda x: tf.math.cos(2*omega*pi*tf.cast(x,'float32')/n),n),
+    'sin': lambda n,*args,omega=1,**kwarg: (lambda x: tf.math.sin(2*omega*pi*tf.cast(x,'float32')/n),n),
     'hot': hot,
     'hotalpha': hotalpha
 }
