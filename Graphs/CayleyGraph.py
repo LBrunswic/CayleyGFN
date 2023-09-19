@@ -156,7 +156,7 @@ def Symmetric(
 
     return CayleyGraphLinearEmb(direct_actions,inverse_actions,diameter,generators=generators,rep_list = R_list,random_gen=random_gen,embedding=iota,embedding_dim=embedding_dim, group_dim=n, name='Sym%s_%s' % (n,generators.numpy()))
 
-from pyvis.network import Network
+# from pyvis.network import Network
 import networkx as nx
 from networkx.readwrite import json_graph
 
