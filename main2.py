@@ -10,7 +10,7 @@ seq_param = 0 # int(sys.argv[1])
 seed = 0 #int(sys.argv[2])
 
 
-series_name = 'noproj_lowreg'
+series_name = 'test5'
 
 POOL_SIZE = 4
 
@@ -68,17 +68,20 @@ INIT_FLOW = hp.HParam('initial_flow', hp.Discrete([1e-3]))
 LR = hp.HParam('learning_rate', hp.Discrete([5*1e-3]))
 EPOCHS = hp.HParam('epochs', hp.Discrete([20]))
 STEP_PER_EPOCH = hp.HParam('step_per_epoch', hp.Discrete([5]))
-OPTIMIZER = hp.HParam('optimizer',hp.Discrete(['Adam','Nesterov']))
+OPTIMIZER = hp.HParam('optimizer',hp.Discrete(['Adam','Nesterov'][:1]))
+REWARD_RESCALE = hp.HParam('reward_rescale',hp.Discrete(['Trivial','ERew'][1:]))
 
 ##__loss_base__
 LOSS = hp.HParam('loss_base', hp.Discrete(['Apower']))
 LOSS_ALPHA = hp.HParam('loss_alpha', hp.Discrete([2.]))
 ##__loss_normalization__
-NORMALIZATION_FN = hp.HParam('normalization_fn', hp.Discrete([0,4]))
-NORMALIZATION_NU_FN = hp.HParam('normalization_nu_fn', hp.Discrete([0,2]))
+NORMALIZATION_FN = hp.HParam('normalization_fn', hp.Discrete([0]))
+NORMALIZATION_NU_FN = hp.HParam('normalization_nu_fn', hp.Discrete([0]))
 ##__loss_regularization__
-B_BETA = hp.HParam('B_beta', hp.Discrete([0.]))
-REG_FN_alpha = hp.HParam('reg_fn_alpha', hp.RealInterval(-20.,-10.))
+B_BETA = hp.HParam('B_beta', hp.RealInterval(-20.,20.))
+REG_FN_GEN = hp.HParam('reg_fn_gen', hp.Discrete(['norm2','LogPathLen'][1:]))
+REG_FN_alpha = hp.HParam('reg_fn_alpha', hp.Discrete([0.]))
+# REG_FN_alpha = hp.HParam('reg_fn_alpha', hp.RealInterval(-12.,-0.))
 REG_FN_logpmin = hp.HParam('reg_fn_logmin', hp.Discrete([25]))
 REG_PROJ = hp.HParam('reg_proj', hp.Discrete(['OrthReg','AddReg'][1:]))
 
@@ -99,7 +102,7 @@ GRAPH_INVERSE = hp.HParam('inverse',hp.Discrete([INVERSE]))
 GRAPH_INITIAL_POSITION = hp.HParam('initial_pos',hp.Discrete([INITIAL_POSITION]))
 REW_FN =  hp.HParam('rew_fn', hp.Discrete(['TwistedManhattan']))
 REW_PARAM = hp.HParam('rew_param', hp.Discrete([str(reward_param)]))
-REW_FACTOR = hp.HParam('rew_factor', hp.Discrete([1.,10.,100.]))
+REW_FACTOR = hp.HParam('rew_factor', hp.Discrete([1.,10.,100.][:1]))
 HEU_FN =  hp.HParam('heuristic_fn', hp.Discrete([heuristic_base_fn]))
 HEU_PARAM = hp.HParam('heuristic_param', hp.Discrete([str(heuristic_param)]))
 HEU_FACTOR = hp.HParam('heuristic_factor', hp.Discrete([0.]))
@@ -119,7 +122,7 @@ EMBEDDING = hp.HParam('embedding',hp.Discrete(
 
 
 
-SAMPLE_SIZE = 50
+SAMPLE_SIZE = 400
 
 
 log_dir = 'logs/S%s_%s_%s_%s/' % (SIZE,GENERATORS,series_name,seq_param)
@@ -128,7 +131,7 @@ log_dir = 'logs/S%s_%s_%s_%s/' % (SIZE,GENERATORS,series_name,seq_param)
 
 HP = [NORMALIZATION_FN,NORMALIZATION_NU_FN,REG_FN_alpha,REG_PROJ,REG_FN_logpmin,GRAD_BATCH_SIZE,BATCH_SIZE, LENGTH_CUTOFF_FACTOR, INIT_FLOW,LR,EPOCHS,STEP_PER_EPOCH,B_BETA,PATH_REDRAW,NEIGHBORHOOD,
       GRAPH_SIZE,GRAPH_GENERATORS,GRAPH_INVERSE,FE_OPT,SEED,EMBEDDING,OPTIMIZER,LOSS,LOSS_ALPHA,
-      FE_OPT,REW_FN,REW_PARAM,REW_FACTOR,GRAPH_INITIAL_POSITION,HEU_FN,HEU_FACTOR,HEU_PARAM]
+      FE_OPT,REW_FN,REW_PARAM,REW_FACTOR,GRAPH_INITIAL_POSITION,HEU_FN,HEU_FACTOR,HEU_PARAM,REWARD_RESCALE,REG_FN_GEN]
 
 HP_name = [x.name for x in HP]
 

@@ -20,7 +20,7 @@ def proj_reg(self,loss_gradients,reg_gradients):
 def projection_orth(u,v):
     v_norm = tf.math.l2_normalize(v)
     return tf.reduce_sum(u*v_norm)*v_norm
-def reg_fn_gen(alpha,logpmin):
+def LogPathLen_gen(alpha,logpmin):
     alpha = tf.math.exp(alpha)
     @tf.function
     def reg_fn(Flownu):

@@ -16,7 +16,9 @@ reg_post_choices = {
     'OrthReg' : proj_reg,
     'AddReg' :  straight_reg,
 }
-
+reg_fn_gen_choices =   {
+        'LogPathLen' : LogPathLen_gen,
+    }
 
 normalization_fns =[
     None,
@@ -40,6 +42,35 @@ optimizers = {
         'Nesterov' : lambda lr: tf.keras.optimizers.SGD(learning_rate=lr,nesterov=True),
     }
 
+@tf.function
+def expected_reward(FoutStar,R,density,delta=1e-20):
+    return tf.reduce_mean(tf.reduce_sum(density*R**2/(delta+FoutStar+R),axis=1),axis=0)
+
+class RewardRescaleERew(tf.keras.Model):
+    def __init__(self, name='RewardRescale', **kwargs):
+        super(RewardRescaleERew, self).__init__(name=name, **kwargs)
+        self.reward = self.add_weight(name='reward', initializer='ones',trainable=False,shape=())
+    def update_state(self, Flownu):
+        density = tf.math.exp(Flownu[..., 4])
+        reward = Flownu[...,5]
+        Foutstar=Flownu[..., 1]
+        Erew = expected_reward(Foutstar,reward,density)
+        self.reward.assign(Erew)
+    def fn_call(self):
+        return 3*self.reward
+
+class RewardRescaleTrivial(tf.keras.Model):
+    def __init__(self, name='RewardRescale', **kwargs):
+        super(RewardRescaleTrivial, self).__init__(name=name, **kwargs)
+    def update_state(self, Flownu):
+        pass
+    def fn_call(self):
+        return 1.
+
+reward_rescale = {
+    'Trivial' : RewardRescaleTrivial,
+    'ERew': RewardRescaleERew
+}
 Metrics = [
         ExpectedReward,
         ExpectedMaxSeenReward,
@@ -83,6 +114,8 @@ REW_FACTOR='rew_factor'
 HEU_FN='heuristic_fn'
 HEU_PARAM='heuristic_param'
 HEU_FACTOR='heuristic_factor'
+REWARD_RESCALE='reward_rescale'
+REG_FN_GEN='reg_fn_gen'
 def train_test_model(hparams,log_dir=None):
     if log_dir is None:
         log_dir = "logs/fit/" + datetime.now().strftime("%Y%m%d-%H%M%S")
@@ -107,6 +140,7 @@ def train_test_model(hparams,log_dir=None):
         normalization_fn=normalization_fns[hparams[NORMALIZATION_FN]],
         normalization_nu_fn=normalization_nu_fns[hparams[NORMALIZATION_NU_FN]],
     )
+    reg_fn_gen = reg_fn_gen_choices[hparams[REG_FN_GEN]]
     reg_fn = reg_fn_gen(
         alpha=hparams[REG_FN_alpha],
         logpmin=hparams[REG_FN_logpmin],
@@ -130,6 +164,7 @@ def train_test_model(hparams,log_dir=None):
         reg_post=reg_post,
         reg_fn=reg_fn,
         grad_batch_size=hparams[GRAD_BATCH_SIZE],
+        reward_rescale_estimator=reward_rescale[hparams[REWARD_RESCALE]],
         # reg_fn=reg_withcutoff_fn
     )
     flow(0)

@@ -37,6 +37,7 @@ class GFlowCayleyLinear(tf.keras.Model):
                  reg_post=no_reg,
                  reg_fn=lambda x:tf.constant(0.),
                  grad_batch_size = 10,
+                 reward_rescale_estimator = None,
                  **kwargs
         ):
         if name is None:
@@ -47,6 +48,7 @@ class GFlowCayleyLinear(tf.keras.Model):
         self.reward = reward # embedding -> RR_+
         self.embedding_dim = int(graph.embedding_dim)
         self.dd_v = dd_v
+        self.reward_rescale_estimator = reward_rescale_estimator()
         FlowEstimator, FlowEstimator_options =  FlowEstimatorGen
         if FlowEstimator is None:
             self.FlowEstimator = FlowEstimator_options
@@ -122,7 +124,7 @@ class GFlowCayleyLinear(tf.keras.Model):
             dtype=self.graph.representation_dtype),
             trainable=False
         )
-
+        self.reward_rescale = tf.Variable(tf.ones(()),trainable=False)
 
     def call(self,inputs):
         res = self.FlowCompute()
@@ -158,8 +160,8 @@ class GFlowCayleyLinear(tf.keras.Model):
             tf.reduce_sum(F,axis=1),
             shape=(self.batch_size,self.path_length,1)
         )
-        R = tf.reshape(self.paths_reward,shape=(self.batch_size,self.path_length,1))
-        Finit = tf.reshape(self.path_init_flow,shape=(self.batch_size,self.path_length,1))*tf.math.exp(self.initial_flow)*self.ref_initflow
+        R =   tf.reshape(self.paths_reward,shape=(self.batch_size,self.path_length,1))/self.reward_rescale
+        Finit = tf.reshape(self.path_init_flow,shape=(self.batch_size,self.path_length,1))*tf.math.exp(self.initial_flow)*self.ref_initflow/self.reward_rescale
         Fin = tf.zeros_like(Fout)
         for i in tf.range(0, nactions, 1):
             Fin += tf.reshape(
@@ -216,57 +218,9 @@ class GFlowCayleyLinear(tf.keras.Model):
                         self.paths_true[j,:batch_size, i]
                     )
                 )
-                # print('s',batch_size)
                 self.paths[j,:batch_size, i+1].assign(self.graph.embedding(self.paths_true[0,:,i+1])[:batch_size])
-            # print(self.neighborhood.dtype)
-        # if neighborhood:
-        # expanded_paths = tf.einsum('aij,btj->abti', self.neighborhood,self.paths_true[0,:self.pure_path_batch_size])
-        # expanded_paths = tf.reshape(expanded_paths, (self.batch_size,self.path_length,self.graph.group_dim))
-        # # assert(tf.reduce_all(expanded_paths[:self.pure_path_batch_size]==self.paths_true[:self.pure_path_batch_size]))
-        # self.paths_true[0].assign(expanded_paths)
-
-        # self.n_sample[1].assign(self.n_sample[1]+self.paths_true.shape[0]*self.paths_true.shape[1])
 
 
-    # @tf.function
-    # def gen_path_redraw(self,delta=1e-20,exploration=0.):
-    #     batch_size = self.pure_path_batch_size//2
-    #     # self.n_sample[1].assign(self.n_sample[1]+batch_size*self.paths_true.shape[1])
-    #     self.paths_true[0,:batch_size,0].assign(tf.concat([self.graph.sample(batch_size)],axis=0))
-    #     self.paths[0,:batch_size, 0].assign(self.graph.embedding(self.paths_true[0,:batch_size,0]))
-    #     for i in tf.range(self.path_length - 1):
-    #         Fout = self.FlowEstimator(self.paths[0,:batch_size, i])
-    #         tot = tf.reduce_sum(Fout,axis=1,keepdims=True)/self.graph.nactions
-    #         Fout = Fout + self.exploration_forcing(tot,delta,exploration)
-    #         self.paths_actions[0,:batch_size,i].assign(
-    #             tf.reshape(
-    #                 tf.random.categorical(
-    #                     tf.math.log(Fout),
-    #                     1,
-    #                     dtype=self.paths_actions.dtype
-    #                 )
-    #                 ,
-    #                 (-1,)
-    #             )
-    #         )
-    #         onehot = tf.one_hot(self.paths_actions[0,:batch_size,i],self.nactions,dtype=self.graph.group_dtype)
-    #         self.paths_true[0,:batch_size, i + 1].assign(
-    #             tf.einsum(
-    #                 'ia,ajk,ik->ij',
-    #                 onehot,
-    #                 self.graph.actions,
-    #                 self.paths_true[0,:batch_size, i]
-    #             )
-    #         )
-    #         # print('s',batch_size)
-    #         self.paths[0,:batch_size, i+1].assign(self.graph.embedding(self.paths_true[0,:,i+1])[:batch_size])
-    #         # print(self.neighborhood.dtype)
-    #     # if neighborhood:
-    #     expanded_paths = tf.einsum('aij,btj->abti', self.neighborhood,self.paths_true[0,:self.pure_path_batch_size])
-    #     expanded_paths = tf.reshape(expanded_paths, (self.batch_size,self.path_length,self.graph.group_dim))
-    #     # assert(tf.reduce_all(expanded_paths[:self.pure_path_batch_size]==self.paths_true[:self.pure_path_batch_size]))
-    #     self.paths_true.assign(expanded_paths)
-    #     self.paths.assign(self.graph.embedding(self.paths_true))
 
     @tf.function
     def update_edges(self):
@@ -278,16 +232,6 @@ class GFlowCayleyLinear(tf.keras.Model):
     @tf.function
     def update_embedding(self):
         self.paths.assign(self.graph.embedding(self.paths_true))
-    # @tf.function
-    # def sort(self):
-    #     # print(self.paths_reward)
-    #     scores = tf.reduce_sum(self.paths_reward,axis=1)
-    #     # print(scores)
-    #     indices = tf.argsort(scores,axis=0)
-    #     self.paths_true[0].assign(tf.gather(self.paths_true[0],indices,axis=0))
-    #     self.paths.assign(tf.gather(self.paths,indices,axis=0))
-    #     self.paths_actions.assign(tf.gather(self.paths_actions,indices,axis=0))
-    #     self.paths_reward.assign(tf.gather(self.paths_reward,indices,axis=0))
 
     @tf.function
     def update_training_distribution(self,delta=1e-20,exploration=0.,alpha=(0.9,0.1)):
@@ -297,13 +241,6 @@ class GFlowCayleyLinear(tf.keras.Model):
         self.gen_path(exploration=exploration)
         # self.update_embedding
         self.update_reward()
-        # self.update_ref_MC()
-        # for _ in range(self.improve_cycle):
-        #     # print('redraw')
-        #     self.sort()
-        #     self.gen_path_redraw(exploration=exploration)
-        #     self.update_reward()
-        # self.sort()
         self.update_edges()
         self.update_init_flow()
         self.initial_flow.assign(tf.math.log(
@@ -313,12 +250,7 @@ class GFlowCayleyLinear(tf.keras.Model):
             ) / self.ref_initflow
         ))
 
-    @tf.function
-    def update_ref_MC(self):
-        self.mean_MC.assign(self.mean_MC + tf.reduce_mean(self.paths_reward[:,0]))
-        # self.mean_MC.assign(tf.reduce_mean(self.paths_reward[:,0]))
-        self.n_sample[0].assign(self.n_sample[0]+1)
-        # self.n_sample[0].assign(1)
+        self.reward_rescale.assign(self.reward_rescale_estimator.fn_call())
 
     @tf.function
     def path_density_foo(self,delta=0.,exploration=0.):
@@ -380,6 +312,7 @@ class GFlowCayleyLinear(tf.keras.Model):
                     [
                         self.FlowCompute(),
                         tf.expand_dims(self.logdensity_foo(),-1),
+                        tf.reshape(self.paths_reward, shape=(self.batch_size, self.path_length, 1)),
                     ],
                     axis=-1
                 )
@@ -409,6 +342,7 @@ class GFlowCayleyLinear(tf.keras.Model):
                     metric.update_state(self.initflow_estimate())
                 else:
                     metric.update_state(Flownu, reg_gradients)
+            self.reward_rescale_estimator.update_state(Flownu)
 
         a = zip(self.reg_post(self,loss_gradients,reg_gradients), trainable_vars)
         self.optimizer.apply_gradients(a)

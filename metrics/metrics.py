@@ -51,11 +51,9 @@ class ExpectedMaxSeenReward(tf.keras.metrics.Metric):
         self.max_reward = self.add_weight(name='max_reward', initializer='zeros')
         self.n = self.add_weight(name='n_sample', initializer='zeros')
 
-
-
     def update_state(self, Flownu, reg_gradients, sample_weight=None):
-
-        self.max_reward.assign_add(tf.reduce_mean(tf.reduce_max(Flownu[...,2],axis=1)))
+        reward = Flownu[...,5]
+        self.max_reward.assign_add(tf.reduce_mean(tf.reduce_max(reward,axis=1)))
         self.n.assign_add(1.)
 
     def result(self):
@@ -69,7 +67,8 @@ class MaxSeenReward(tf.keras.metrics.Metric):
         # self.n = self.add_weight(name='n_sample', initializer='zeros')
 
     def update_state(self, Flownu, reg_gradients, sample_weight=None):
-        self.max_reward.assign(tf.reduce_max([tf.reduce_max(Flownu[...,2]),self.max_reward]))
+        reward = Flownu[..., 5]
+        self.max_reward.assign(tf.reduce_max([tf.reduce_max(reward),self.max_reward]))
         # self.n.assign_add(1.)
 
     def result(self):
@@ -89,10 +88,13 @@ class ExpectedReward(tf.keras.metrics.Metric):
 
     def update_state(self, Flownu, reg_gradients, sample_weight=None):
         density = tf.math.exp(Flownu[..., 4])
+        reward = Flownu[...,2]
+        rescale = tf.reduce_max(Flownu[...,5])/tf.reduce_max(Flownu[...,2])
+        Foutstar=Flownu[..., 1]
         if self.cutoff is None:
-            Erew = expected_reward(Flownu[...,1],Flownu[...,2],density)
+            Erew = expected_reward(Foutstar,reward,density)*rescale
         else:
-            Erew = self.expected_reward(Flownu[:self.cutoff,:,1],Flownu[:self.cutoff,:,2],density[:self.cutoff])
+            Erew = self.expected_reward(Foutstar[:self.cutoff],reward[:self.cutoff],density[:self.cutoff])*rescale
         self.reward.assign(Erew)
 
     def result(self):
