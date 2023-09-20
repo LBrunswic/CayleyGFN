@@ -90,18 +90,18 @@ pi = np.math.pi
 def hot(n,*args,omega=1,**kwarg):
     Id = tf.eye(n)
     def aux(paths):
-        # print((*paths.shape[:-1], n*n,))
-        # print(tf.gather(Id,paths))
-        x = tf.gather(Id,paths)
-        k = len(x.shape)
-        # print((*x.shape[:-2],k-2,k-1))
-        transpose_shape = (*tuple(range(k-2)),k-2,k-1)
-        return tf.cast(
-            tf.reshape(
-                tf.transpose(x,transpose_shape),
-                (*paths.shape[:-1], n*n,)
-            ),
-        'float32')
+        return tf.reshape(tf.one_hot(paths,n),(*paths.shape[:-1], n*n,))
+
+        # x = tf.gather(Id,paths)
+        # k = len(x.shape)
+        # # print((*x.shape[:-2],k-2,k-1))
+        # transpose_shape = (*tuple(range(k-2)),k-2,k-1)
+        # return tf.cast(
+        #     tf.reshape(
+        #         tf.transpose(x,transpose_shape),
+        #         (*paths.shape[:-1], n*n,)
+        #     ),
+        # 'float32')
     return aux,n*n
 pi = np.math.pi
 def hotalpha(n,*args,omega=1,**kwarg):

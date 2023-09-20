@@ -68,11 +68,12 @@ class SymmetricUniform():
     def __init__(self,n):
         self.n = n
         self.dtype = 'int32'
-        self.g = tf.random.Generator.from_seed(1234)
+        # self.g = tf.random.Generator.from_seed(1234)
+        self.g = np.random.default_rng(seed=1234)
         self.batch = {}
     def sample(self,batch_size):
         n = self.n
-        return tf.argsort(self.g.uniform((batch_size,n)),axis=1)
+        return np.argsort(self.g.uniform(0,1,(batch_size,n)),axis=1).astype('int32')
         # if batch_size not in self.batch:
         #     self.batch[batch_size] = tf.Variable(tf.zeros((batch_size,n),dtype=self.dtype),dtype=self.dtype)
         # perm = self.batch[batch_size]

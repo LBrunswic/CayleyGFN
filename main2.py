@@ -10,13 +10,13 @@ seq_param = 0 # int(sys.argv[1])
 seed = 0 #int(sys.argv[2])
 
 
-series_name = 'test'
+series_name = 'noproj_lowreg'
 
-POOL_SIZE = 3
+POOL_SIZE = 4
 
 #_____________PROBLEM DEFINITION___________________
 ## __graph__
-SIZE = 5
+SIZE = 15
 GENERATORS = 'transpositions'
 INITIAL_POSITION = 'SymmetricUniform'
 INVERSE = True
@@ -40,8 +40,8 @@ heuristic_param = {}
 
 FlowEstimator_options = {
     'options': {
-        'kernel_depth' : 0,
-        'width' : 64,
+        'kernel_depth' : 3,
+        'width' : 32,
         'final_activation' : 'linear',
     },
     'kernel_options': {
@@ -62,12 +62,12 @@ FE_OPT = hp.HParam('flowestimator_opt',hp.Discrete([
 
 #___________TRAINING HP______________
 GRAD_BATCH_SIZE = hp.HParam('grad_batch_size', hp.Discrete([1]))
-BATCH_SIZE = hp.HParam('batch_size', hp.Discrete([64]))
-LENGTH_CUTOFF_FACTOR = hp.HParam('length_cutoff_factor', hp.Discrete([10]))
+BATCH_SIZE = hp.HParam('batch_size', hp.Discrete([1024]))
+LENGTH_CUTOFF_FACTOR = hp.HParam('length_cutoff_factor', hp.Discrete([2]))
 INIT_FLOW = hp.HParam('initial_flow', hp.Discrete([1e-3]))
-LR = hp.HParam('learning_rate', hp.Discrete([1e-3]))
-EPOCHS = hp.HParam('epochs', hp.Discrete([10]))
-STEP_PER_EPOCH = hp.HParam('step_per_epoch', hp.Discrete([20]))
+LR = hp.HParam('learning_rate', hp.Discrete([5*1e-3]))
+EPOCHS = hp.HParam('epochs', hp.Discrete([20]))
+STEP_PER_EPOCH = hp.HParam('step_per_epoch', hp.Discrete([5]))
 OPTIMIZER = hp.HParam('optimizer',hp.Discrete(['Adam','Nesterov']))
 
 ##__loss_base__
@@ -78,7 +78,7 @@ NORMALIZATION_FN = hp.HParam('normalization_fn', hp.Discrete([0,4]))
 NORMALIZATION_NU_FN = hp.HParam('normalization_nu_fn', hp.Discrete([0,2]))
 ##__loss_regularization__
 B_BETA = hp.HParam('B_beta', hp.Discrete([0.]))
-REG_FN_alpha = hp.HParam('reg_fn_alpha', hp.RealInterval(-10.,10.))
+REG_FN_alpha = hp.HParam('reg_fn_alpha', hp.RealInterval(-20.,-10.))
 REG_FN_logpmin = hp.HParam('reg_fn_logmin', hp.Discrete([25]))
 REG_PROJ = hp.HParam('reg_proj', hp.Discrete(['OrthReg','AddReg'][1:]))
 
@@ -99,7 +99,7 @@ GRAPH_INVERSE = hp.HParam('inverse',hp.Discrete([INVERSE]))
 GRAPH_INITIAL_POSITION = hp.HParam('initial_pos',hp.Discrete([INITIAL_POSITION]))
 REW_FN =  hp.HParam('rew_fn', hp.Discrete(['TwistedManhattan']))
 REW_PARAM = hp.HParam('rew_param', hp.Discrete([str(reward_param)]))
-REW_FACTOR = hp.HParam('rew_factor', hp.Discrete([0.1,1.,10.,100.]))
+REW_FACTOR = hp.HParam('rew_factor', hp.Discrete([1.,10.,100.]))
 HEU_FN =  hp.HParam('heuristic_fn', hp.Discrete([heuristic_base_fn]))
 HEU_PARAM = hp.HParam('heuristic_param', hp.Discrete([str(heuristic_param)]))
 HEU_FACTOR = hp.HParam('heuristic_factor', hp.Discrete([0.]))
@@ -112,14 +112,14 @@ EMBEDDING = hp.HParam('embedding',hp.Discrete(
             ('hot',), # direct
             ('hot','cos','sin','natural'), #full
             ('cos','sin','natural'), #light
-        ][:1]
+        ][-1:]
     ]
 ))
 
 
 
 
-SAMPLE_SIZE = 400
+SAMPLE_SIZE = 50
 
 
 log_dir = 'logs/S%s_%s_%s_%s/' % (SIZE,GENERATORS,series_name,seq_param)
