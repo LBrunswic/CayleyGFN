@@ -36,7 +36,7 @@ class ReplayBuffer(tf.keras.callbacks.Callback):
 
 
 class FlowSizeStop(tf.keras.callbacks.Callback):
-    def __init__(self, monitor="FlowSize", min_val=1e-3,max_val=1e4):
+    def __init__(self, monitor="FlowSize", min_val=1e-4,max_val=1e4):
         super().__init__()
         self.monitor = monitor
         self.min_val = min_val

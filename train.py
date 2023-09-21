@@ -18,6 +18,7 @@ reg_post_choices = {
 }
 reg_fn_gen_choices =   {
         'LogPathLen' : LogPathLen_gen,
+        'norm2' : Norm2_gen,
     }
 
 normalization_fns =[
@@ -129,7 +130,7 @@ def train_test_model(hparams,log_dir=None):
         embedding=[ (x,{}) for x in  hparams[EMBEDDING].split('_')],
         dtype='float32'
     )
-    if hparams[B_BETA]>0:
+    if hparams[B_BETA]>-900:
         B = Bpower(beta=tf.math.exp(hparams[B_BETA]))
     else:
         B = lambda x,y:1

@@ -28,6 +28,12 @@ def LogPathLen_gen(alpha,logpmin):
         Ebigtau = tf.reduce_mean(logdensity_trainable[:,-1])
         return alpha*tf.nn.relu(logpmin+Ebigtau)
     return reg_fn
+def Norm2_gen(alpha,logpmin):
+    alpha = tf.math.exp(alpha)
+    @tf.function
+    def reg_fn(Flownu):
+        return alpha * tf.reduce_mean(tf.linalg.norm(Flownu[..., 0]+Flownu[..., 1],ord=2,axis=1))
+    return reg_fn
 def pathlength_generatrix_fn_gen(alpha,logpmin):
     alpha = tf.math.exp(alpha)
     @tf.function

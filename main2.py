@@ -10,7 +10,7 @@ seq_param = 0 # int(sys.argv[1])
 seed = 0 #int(sys.argv[2])
 
 
-series_name = 'test5'
+series_name = 'test7'
 
 POOL_SIZE = 4
 
@@ -78,12 +78,13 @@ LOSS_ALPHA = hp.HParam('loss_alpha', hp.Discrete([2.]))
 NORMALIZATION_FN = hp.HParam('normalization_fn', hp.Discrete([0]))
 NORMALIZATION_NU_FN = hp.HParam('normalization_nu_fn', hp.Discrete([0]))
 ##__loss_regularization__
-B_BETA = hp.HParam('B_beta', hp.RealInterval(-20.,20.))
-REG_FN_GEN = hp.HParam('reg_fn_gen', hp.Discrete(['norm2','LogPathLen'][1:]))
-REG_FN_alpha = hp.HParam('reg_fn_alpha', hp.Discrete([0.]))
-# REG_FN_alpha = hp.HParam('reg_fn_alpha', hp.RealInterval(-12.,-0.))
+# B_BETA = hp.HParam('B_beta', hp.RealInterval(-3.5,-3.))
+B_BETA = hp.HParam('B_beta', hp.Discrete([-1000.]))
+REG_FN_GEN = hp.HParam('reg_fn_gen', hp.Discrete(['norm2','LogPathLen'][:1]))
+# REG_FN_alpha = hp.HParam('reg_fn_alpha', hp.Discrete([-1000.]))
+REG_FN_alpha = hp.HParam('reg_fn_alpha', hp.RealInterval(-5.,-2.5))
 REG_FN_logpmin = hp.HParam('reg_fn_logmin', hp.Discrete([25]))
-REG_PROJ = hp.HParam('reg_proj', hp.Discrete(['OrthReg','AddReg'][1:]))
+REG_PROJ = hp.HParam('reg_proj', hp.Discrete(['OrthReg','AddReg']))
 
 PATH_REDRAW = hp.HParam('path_redraw', hp.Discrete([0]))
 NEIGHBORHOOD = hp.HParam('neighborhood', hp.Discrete([0]))
@@ -119,11 +120,7 @@ EMBEDDING = hp.HParam('embedding',hp.Discrete(
     ]
 ))
 
-
-
-
-SAMPLE_SIZE = 400
-
+SAMPLE_SIZE = 100
 
 log_dir = 'logs/S%s_%s_%s_%s/' % (SIZE,GENERATORS,series_name,seq_param)
 
