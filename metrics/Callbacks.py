@@ -9,6 +9,16 @@ from Graphs.CayleyGraph import path_representation
 from datetime import datetime
 
 class ReplayBuffer(tf.keras.callbacks.Callback):
+    def __init__(self, monitor="ReplayBuffer", folder='Knowledge'):
+        super().__init__()
+        self.folder = folder
+        self.episode_memory = []
+    def generate_episode(self,model):
+        return
+    def gen(self):
+        while True:
+            yield
+
     def on_epoch_begin(self, epoch, logs=None):
         def schedule(epoch):
             if epoch<10:
@@ -31,12 +41,12 @@ class ReplayBuffer(tf.keras.callbacks.Callback):
                 return (0.99, 0.01)
         print('Update training dist...')
         T = time()
-        self.model.update_training_distribution(exploration=0.,alpha=schedule(epoch-1) )
+        self.model.update_training_distribution(exploration=0.,alpha=schedule(epoch-1))
         print('done in %s seconds' % (time()-T))
 
 
 class FlowSizeStop(tf.keras.callbacks.Callback):
-    def __init__(self, monitor="FlowSize", min_val=1e-4,max_val=1e4):
+    def __init__(self, monitor="FlowSize", min_val=5*1e-1,max_val=1e4):
         super().__init__()
         self.monitor = monitor
         self.min_val = min_val
@@ -46,6 +56,8 @@ class FlowSizeStop(tf.keras.callbacks.Callback):
     def on_train_begin(self, logs=None):
         self.stopped = False
     def on_epoch_end(self, epoch, logs=None):
+        if epoch < 20:
+            return
         if self.get_monitor_value(logs) < self.min_val or self.get_monitor_value(logs) > self.max_val:
             self.model.stop_training = True
             self.stopped = True
@@ -53,11 +65,5 @@ class FlowSizeStop(tf.keras.callbacks.Callback):
     def get_monitor_value(self, logs):
         logs = logs or {}
         monitor_value = logs.get(self.monitor)
-        # if monitor_value is None:
-        #     logging.warning(
-        #         "Early stopping conditioned on metric `%s` "
-        #         "which is not available. Available metrics are: %s",
-        #         self.monitor,
-        #         ",".join(list(logs.keys())),
-        #     )
         return monitor_value
+

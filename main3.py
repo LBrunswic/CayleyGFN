@@ -22,7 +22,7 @@ POOL_SIZE = 3
 #_____________PROBLEM DEFINITION___________________
 ## __graph__
 SIZE = 15
-GENERATORS = 'transpositions'
+GENERATORS = 'cycles_a'
 INITIAL_POSITION = 'SymmetricUniform'
 INVERSE = True
 ## __reward__
@@ -67,9 +67,9 @@ GRAD_BATCH_SIZE = hp.HParam('grad_batch_size', hp.Discrete([1]))
 BATCH_SIZE = hp.HParam('batch_size', hp.Discrete([1024]))
 LENGTH_CUTOFF_FACTOR = hp.HParam('length_cutoff_factor', hp.Discrete([2]))
 INIT_FLOW = hp.HParam('initial_flow', hp.Discrete([1e-3]))
-LR = hp.HParam('learning_rate', hp.Discrete([5*1e-3]))
+LR = hp.HParam('learning_rate', hp.Discrete([1e-2]))
 LR_SCHEDULE = hp.HParam('lr_schedule', hp.Discrete(['none','one','two'][2:]))
-EPOCHS = hp.HParam('epochs', hp.Discrete([10]))
+EPOCHS = hp.HParam('epochs', hp.Discrete([30]))
 STEP_PER_EPOCH = hp.HParam('step_per_epoch', hp.Discrete([5]))
 OPTIMIZER = hp.HParam('optimizer',hp.Discrete(['Adam','Nesterov'][:1]))
 REWARD_RESCALE = hp.HParam('reward_rescale',hp.Discrete(['Trivial','ERew'][:1]))
@@ -89,7 +89,7 @@ REG_FN_GEN = hp.HParam('reg_fn_gen', hp.Discrete(['norm2','LogPathLen','PathAccu
 REG_FN_alpha = hp.HParam('reg_fn_alpha', hp.RealInterval(-20.,10.))
 REG_FN_alpha_SCHEDULE = hp.HParam('reg_fn_alpha_schedule', hp.Discrete(['none','one','two','short'][3:]))
 REG_FN_logpmin = hp.HParam('reg_fn_logmin', hp.Discrete([5]))
-REG_PROJ = hp.HParam('reg_proj', hp.Discrete(['OrthReg','AddReg'][1:]))
+REG_PROJ = hp.HParam('reg_proj', hp.Discrete(['OrthReg','AddReg']))
 
 PATH_REDRAW = hp.HParam('path_redraw', hp.Discrete([0]))
 NEIGHBORHOOD = hp.HParam('neighborhood', hp.Discrete([0]))

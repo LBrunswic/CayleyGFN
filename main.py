@@ -49,7 +49,7 @@ seed = 0 #int(sys.argv[2])
 
 series_name = 'test'
 
-POOL_SIZE = 3
+POOL_SIZE = 4
 
 #_____________PROBLEM DEFINITION___________________
 ## __graph__

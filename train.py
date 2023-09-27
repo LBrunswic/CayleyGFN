@@ -5,11 +5,41 @@ from GFlowBase.losses import *
 from GFlowBase.rewards import *
 from GFlowBase.regularization import *
 from Groups.symmetric_groups import SymmetricUniform,Modal,rubick_generators,inversion,iteration_random
-from metrics import FlowSizeStop, ReplayBuffer,ExpectedLen,ExpectedMaxSeenReward,MaxSeenReward,ExpectedReward,FlowSize,RandomCheck
+from metrics import FlowSizeStop,PathAccuracy, ReplayBuffer,ExpectedLen,ExpectedMaxSeenReward,MaxSeenReward,ExpectedReward,FlowSize,RandomCheck,PathLeak
 import tensorflow as tf
 from datetime import datetime
 
 
+class PlaceHolder(tf.keras.callbacks.Callback):
+    def __init__(self, **kwargs):
+        super(PlaceHolder).__init__(**kwargs)
+
+
+class One(tf.keras.callbacks.Callback):
+    def __init__(self, **kwargs):
+        super(One).__init__(**kwargs)
+    def on_epoch_end(self, epoch, logs=None):
+        if epoch % 10 == 0 and epoch > 0:
+            self.model.reg_fn.alpha.assign(self.model.reg_fn.alpha*tf.exp(-1.))
+class Two(tf.keras.callbacks.Callback):
+    def __init__(self, **kwargs):
+        super(One).__init__(**kwargs)
+    def on_epoch_end(self, epoch, logs=None):
+        if epoch % 10 == 0 and epoch > 0:
+            self.model.reg_fn.alpha.assign(self.model.reg_fn.alpha*tf.exp(-0.3))
+class Short(tf.keras.callbacks.Callback):
+    def __init__(self, **kwargs):
+        super(Short).__init__(**kwargs)
+    def on_epoch_end(self, epoch, logs=None):
+        if epoch > 10:
+            self.model.reg_fn.alpha.assign(self.model.reg_fn.alpha*tf.exp(-0.3))
+
+reg_fn_alpha_schedules = {
+    'none' : PlaceHolder,
+    'one' : One,
+    'two' : Two,
+    'short' : Short,
+}
 
 
 reg_post_choices = {
@@ -17,9 +47,33 @@ reg_post_choices = {
     'AddReg' :  straight_reg,
 }
 reg_fn_gen_choices =   {
+        'PathAccuracy' : PathAccuracy_gen,
         'LogPathLen' : LogPathLen_gen,
         'norm2' : Norm2_gen,
     }
+
+cutoff_fns = {
+    'none' : lambda flownu,finit: tf.ones_like([flownu[..., 0]]),
+    'non_zero' : lambda flownu,finit: tf.cast(flownu[..., 2] >= tf.reduce_min(flownu[..., 2], axis=1,keepdims=True), 'float32'),
+}
+
+def schedule_one(epoch,lr):
+    if epoch<20:
+        return lr
+    else:
+        return lr*0.98
+def schedule_two(epoch,lr):
+    if epoch<20:
+        return lr
+    else:
+        return lr*0.8
+
+lr_schedule = {
+    'none' : lambda epoch,lr: lr,
+    'one' :  schedule_one,
+    'two' :  schedule_two
+}
+
 
 normalization_fns =[
     None,
@@ -27,7 +81,7 @@ normalization_fns =[
     lambda flownu,finit: 1e-3 + flownu[...,1],
     lambda flownu,finit: 1e-3 + finit,
     lambda flownu,finit: 1e-3 + tf.reduce_mean(tf.reduce_sum(tf.reduce_sum(flownu[..., :4], axis=-1),axis=-1)) ,
-    lambda flownu,finit: 1e-3 + (finit+tf.reduce_mean(tf.reduce_sum(tf.reduce_sum(flownu[..., :4], axis=-1),axis=-1))),
+    lambda flownu,finit: 1e-3 + tf.reduce_sum(tf.reduce_sum(flownu[..., :4], axis=-1),axis=-1,keepdims=True),
     lambda flownu,finit: 1e-3 + 10*tf.reduce_mean(tf.reduce_sum(tf.reduce_sum(flownu[..., :4], axis=-1),axis=-1)) ,
     # lambda flownu,finit: 1e-3 + (finit+tf.reduce_mean(tf.reduce_sum(tf.reduce_sum(flownu[..., :4], axis=-1),axis=-1))),
 ]
@@ -35,7 +89,8 @@ normalization_fns =[
 normalization_nu_fns =[
     None,
     lambda flownu,finit: tf.reduce_mean(tf.reduce_sum(tf.math.exp(flownu[..., 4]),axis=1)),
-    lambda flownu,finit: tf.reduce_sum(tf.math.exp(flownu[..., 4]),axis=1,keepdims=True)
+    lambda flownu,finit: tf.reduce_sum(tf.math.exp(flownu[..., 4]),axis=1,keepdims=True),
+    lambda flownu,finit: tf.reduce_mean(tf.reduce_sum(tf.math.exp(flownu[..., 4]),axis=1))
 ]
 
 optimizers = {
@@ -79,7 +134,9 @@ Metrics = [
         ExpectedLen,
         FlowSize,
         RandomCheck,
-        lambda :tf.keras.metrics.Mean(name='initflow')
+        lambda :tf.keras.metrics.Mean(name='initflow'),
+        PathLeak,
+        PathAccuracy
     ]
 
 
@@ -117,6 +174,9 @@ HEU_PARAM='heuristic_param'
 HEU_FACTOR='heuristic_factor'
 REWARD_RESCALE='reward_rescale'
 REG_FN_GEN='reg_fn_gen'
+LOSS_CUT='loss_cutoff'
+LR_SCHEDULE='lr_schedule'
+REG_FN_alpha_SCHEDULE='reg_fn_alpha_schedule'
 def train_test_model(hparams,log_dir=None):
     if log_dir is None:
         log_dir = "logs/fit/" + datetime.now().strftime("%Y%m%d-%H%M%S")
@@ -140,6 +200,7 @@ def train_test_model(hparams,log_dir=None):
         B=B,
         normalization_fn=normalization_fns[hparams[NORMALIZATION_FN]],
         normalization_nu_fn=normalization_nu_fns[hparams[NORMALIZATION_NU_FN]],
+        cutoff=cutoff_fns[hparams[LOSS_CUT]],
     )
     reg_fn_gen = reg_fn_gen_choices[hparams[REG_FN_GEN]]
     reg_fn = reg_fn_gen(
@@ -177,7 +238,6 @@ def train_test_model(hparams,log_dir=None):
 
 
     for m in Metrics:
-        # print(m)
         flow.metric_list.append(m())
 
 
@@ -185,8 +245,6 @@ def train_test_model(hparams,log_dir=None):
         optimizer=optimizers[hparams[OPTIMIZER]](hparams[LR]),
         loss=loss_fn,
     )
-    print(Metrics)
-    print(flow.metrics)
 
 
 
@@ -194,17 +252,15 @@ def train_test_model(hparams,log_dir=None):
         np.zeros(hparams[STEP_PER_EPOCH]),
         initial_epoch=0,
         epochs=hparams[EPOCHS],
-        verbose=1,
+        verbose=0,
         batch_size=1,
         callbacks=[
             FlowSizeStop(),
-            tf.keras.callbacks.TerminateOnNaN(),
+            # tf.keras.callbacks.TerminateOnNaN(),
             Replay,
-            tf.keras.callbacks.TensorBoard(
-                log_dir=log_dir,
-                histogram_freq=1,
-            )
+            tf.keras.callbacks.TensorBoard(log_dir=log_dir),
+            tf.keras.callbacks.LearningRateScheduler(lr_schedule[hparams[LR_SCHEDULE]]),
+            reg_fn_alpha_schedules[hparams[REG_FN_alpha_SCHEDULE]]()
         ]
     )
-    # metrics = flow.metrics
-    return flow.evaluate(),flow.metrics
+    return flow.evaluate()

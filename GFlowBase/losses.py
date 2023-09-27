@@ -83,7 +83,7 @@ def Rbar_Error(paths_reward,  density, delta=1e-8):
 
 
 class MeanABError(tf.keras.losses.Loss):
-    def __init__(self, A=tf.math.square, B=lambda x,y: 1, normalization_fn=None, normalization_nu_fn=None,  name='loss',**kwargs):
+    def __init__(self, A=tf.math.square, B=lambda x,y: 1, normalization_fn=None, normalization_nu_fn=None, cutoff = None, name='loss',**kwargs):
         super(MeanABError, self).__init__(name=name, **kwargs)
         self.A = A
         self.B = B
@@ -95,6 +95,7 @@ class MeanABError(tf.keras.losses.Loss):
             self.normalization_nu_fn = lambda flownu, finit: 1.
         else:
             self.normalization_nu_fn = normalization_nu_fn
+        self.cutoff = cutoff
 
     @tf.function
     def call(self, Flownu, finit):
@@ -103,9 +104,15 @@ class MeanABError(tf.keras.losses.Loss):
         R =  Flownu[..., 2]
         Finit = Flownu[..., 3]
         logdensity_trainable = Flownu[..., 4]
+
+        cutoff = self.cutoff(Flownu,finit)
+        cutoff_normalization = tf.reduce_sum(cutoff,axis=1,keepdims=True) / tf.reduce_sum(tf.ones_like(cutoff),axis=1,keepdims=True)
+        cutoff = tf.stop_gradient(cutoff/cutoff_normalization)
+
         normalization = tf.stop_gradient(self.normalization_fn(Flownu,finit))
         normalization_nu = tf.stop_gradient(self.normalization_nu_fn(Flownu,finit))
         density_fixed = tf.stop_gradient(tf.math.exp(logdensity_trainable)*normalization_nu)
-        Ldelta = tf.reduce_mean(tf.reduce_sum(density_fixed*self.A((Foutstar+R-Finstar-Finit)/normalization)*self.B(Finstar/normalization, Foutstar/normalization),axis=-1))
+
+        Ldelta =  tf.reduce_mean(tf.reduce_sum(cutoff*density_fixed*self.A((Foutstar+R-Finstar-Finit)/normalization)*self.B(Finstar/normalization, Foutstar/normalization),axis=-1))
         return Ldelta
 

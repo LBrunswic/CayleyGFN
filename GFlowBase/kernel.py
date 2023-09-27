@@ -9,13 +9,24 @@ class softmax_head(tf.keras.layers.Layer):
 
     def build(self, input_shape):
         self.kernel.build(input_shape)
+        self.kernel_pathwise = tf.keras.layers.TimeDistributed(self.kernel)
+        self.kernel_pathwise_multiedge = tf.keras.layers.TimeDistributed(tf.keras.layers.TimeDistributed(self.kernel))
 
     def load_weights(self,*args,**kwargs):
         self.kernel.load_weights(*args,**kwargs)
 
     def call(self, inputs):
+        V = self.kernel_pathwise(inputs)
+        return tf.math.exp(V[...,-1:])*tf.nn.softmax(V[...,:-1])
+
+    def call_statewise(self, inputs):
         V = self.kernel(inputs)
-        return tf.math.exp(V[:,-1:])*tf.nn.softmax(V[:,:-1])
+        return tf.math.exp(V[...,-1:])*tf.nn.softmax(V[...,:-1])
+
+    def call_pathaction_wise(self,inputs):
+        V = self.kernel_pathwise_multiedge(inputs)
+        return tf.math.exp(V[...,-1:])*tf.nn.softmax(V[...,:-1])
+
 
 class direct_head(tf.keras.layers.Layer):
     def __init__(self,kernel):
