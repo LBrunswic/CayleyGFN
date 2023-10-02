@@ -77,5 +77,5 @@ def Symmetric(n,width,Gen='trans_cycle_a',dtype='float32'):
     )
     B = np.all(B,axis=-1)
     adjacency = np.sum(B,axis=1)
-    print(states)
+    # print(states)
     return SmallGraph(adjacency,name='Sym%s_%s' % (n,Gen))
