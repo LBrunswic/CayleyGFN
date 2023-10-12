@@ -1,11 +1,11 @@
-from Graphs.CayleyGraph import Symmetric, path_representation
+from Graphs.CayleyGraph import Symmetric
 from GFlowBase.kernel import *
-from GFlowBase.GFlowCayley import GFlowCayleyLinear
+from GFlowBase.GFlowCayley import  MultiGFlowCayleyLinear
 from GFlowBase.losses import *
 from GFlowBase.rewards import *
 from GFlowBase.regularization import *
 from Groups.symmetric_groups import SymmetricUniform,Modal,rubick_generators,inversion,iteration_random
-from metrics import FlowSizeStop,PathAccuracy, ReplayBuffer,ExpectedLen,ExpectedMaxSeenReward,MaxSeenReward,ExpectedReward,FlowSize,RandomCheck,PathLeak
+from metrics import FlowSizeStop, ReplayBuffer,ExpectedLen,ExpectedMaxSeenReward,MaxSeenReward,ExpectedReward,FlowSize,RandomCheck,PathLeak,InitFlowMetric
 import tensorflow as tf
 from datetime import datetime
 
@@ -47,13 +47,12 @@ reg_post_choices = {
     'AddReg' :  straight_reg,
 }
 reg_fn_gen_choices =   {
-        'PathAccuracy' : PathAccuracy_gen,
         'LogPathLen' : LogPathLen_gen,
         'norm2' : Norm2_gen,
     }
 
 cutoff_fns = {
-    'none' : lambda flownu,finit: tf.ones_like([flownu[..., 0]]),
+    'none' : lambda flownu,finit: tf.ones_like(flownu[..., 0]),
     'non_zero' : lambda flownu,finit: tf.cast(flownu[..., 2] >= tf.reduce_min(flownu[..., 2], axis=1,keepdims=True), 'float32'),
 }
 
@@ -80,7 +79,7 @@ normalization_fns =[
     lambda flownu,finit: 1e-3 + tf.reduce_sum(flownu[..., :4], axis=-1) / 2,
     lambda flownu,finit: 1e-3 + flownu[...,1],
     lambda flownu,finit: 1e-3 + finit,
-    lambda flownu,finit: 1e-3 + tf.reduce_mean(tf.reduce_sum(tf.reduce_sum(flownu[..., :4], axis=-1),axis=-1)) ,
+    lambda flownu,finit: 1e-3 + tf.reduce_mean(tf.reduce_sum(tf.reduce_sum(flownu[..., :4], axis=-1),axis=2),axis=0) ,
     lambda flownu,finit: 1e-3 + tf.reduce_sum(tf.reduce_sum(flownu[..., :4], axis=-1),axis=-1,keepdims=True),
     lambda flownu,finit: 1e-3 + 10*tf.reduce_mean(tf.reduce_sum(tf.reduce_sum(flownu[..., :4], axis=-1),axis=-1)) ,
     # lambda flownu,finit: 1e-3 + (finit+tf.reduce_mean(tf.reduce_sum(tf.reduce_sum(flownu[..., :4], axis=-1),axis=-1))),
@@ -127,28 +126,28 @@ reward_rescale = {
     'Trivial' : RewardRescaleTrivial,
     'ERew': RewardRescaleERew
 }
+
+
 Metrics = [
         ExpectedReward,
         ExpectedMaxSeenReward,
         MaxSeenReward,
         ExpectedLen,
         FlowSize,
-        RandomCheck,
-        lambda :tf.keras.metrics.Mean(name='initflow'),
+        # RandomCheck,
+        InitFlowMetric,
         PathLeak,
-        PathAccuracy
     ]
 
 
-
-NORMALIZATION_FN='normalization_fn'
-NORMALIZATION_NU_FN='normalization_nu_fn'
-REG_FN_alpha='reg_fn_alpha'
-REG_PROJ='reg_proj'
-REG_FN_logpmin='reg_fn_logmin'
-GRAD_BATCH_SIZE='grad_batch_size'
-BATCH_SIZE='batch_size'
-LENGTH_CUTOFF_FACTOR='length_cutoff_factor'
+NORMALIZATION_FN = 'normalization_fn'
+NORMALIZATION_NU_FN = 'normalization_nu_fn'
+REG_FN_alpha ='reg_fn_alpha'
+REG_PROJ ='reg_proj'
+REG_FN_logpmin ='reg_fn_logmin'
+GRAD_BATCH_SIZE ='grad_batch_size'
+BATCH_SIZE ='batch_size'
+LENGTH_CUTOFF='length_cutoff'
 INIT_FLOW='initial_flow'
 LR='learning_rate'
 EPOCHS='epochs'
@@ -177,7 +176,10 @@ REG_FN_GEN='reg_fn_gen'
 LOSS_CUT='loss_cutoff'
 LR_SCHEDULE='lr_schedule'
 REG_FN_alpha_SCHEDULE='reg_fn_alpha_schedule'
-def train_test_model(hparams,log_dir=None):
+POOL_SIZE='pool_size'
+
+
+def train_test_model(hparams,log_dir=None,test=False):
     if log_dir is None:
         log_dir = "logs/fit/" + datetime.now().strftime("%Y%m%d-%H%M%S")
     tf.keras.utils.set_random_seed(hparams[SEED])
@@ -194,7 +196,7 @@ def train_test_model(hparams,log_dir=None):
         B = Bpower(beta=tf.math.exp(hparams[B_BETA]))
     else:
         B = lambda x,y:1
-    print(eval(hparams[LOSS])(alpha=hparams[LOSS_ALPHA]))
+    # print(eval(hparams[LOSS])(alpha=hparams[LOSS_ALPHA]))
     loss_fn = MeanABError(
         A=eval(hparams[LOSS])(alpha=hparams[LOSS_ALPHA]),
         B=B,
@@ -211,22 +213,21 @@ def train_test_model(hparams,log_dir=None):
     reward_fn = eval(hparams[REW_FN])(hparams[GRAPH_SIZE], factor=hparams[REW_FACTOR], **eval(hparams[REW_PARAM]))
     heuristic_fn = eval(hparams[HEU_FN])(hparams[GRAPH_SIZE], factor=hparams[HEU_FACTOR], **eval(hparams[HEU_PARAM]))
 
-    flow = GFlowCayleyLinear(
+    flow = MultiGFlowCayleyLinear(
         graph=G,
         reward=Reward(
             reward_fn=reward_fn,
             heuristic_fn=heuristic_fn,
         ),
         batch_size=hparams[BATCH_SIZE],
-        FlowEstimatorGen=(dense_gen, eval(hparams[FE_OPT])),
-        length_cutoff_factor=hparams[LENGTH_CUTOFF_FACTOR],
+        FlowEstimatorGen=(CNNmulti_gen, eval(hparams[FE_OPT])),
+        path_length=hparams[LENGTH_CUTOFF],
         initflow=hparams[INIT_FLOW],
-        neighborhood=hparams[NEIGHBORHOOD],
-        improve_cycle=hparams[PATH_REDRAW],
         reg_post=reg_post,
         reg_fn=reg_fn,
         grad_batch_size=hparams[GRAD_BATCH_SIZE],
         reward_rescale_estimator=reward_rescale[hparams[REWARD_RESCALE]],
+        ncopy=hparams[POOL_SIZE],
         # reg_fn=reg_withcutoff_fn
     )
     flow(0)
@@ -238,16 +239,15 @@ def train_test_model(hparams,log_dir=None):
 
 
     for m in Metrics:
-        flow.metric_list.append(m())
+        flow.metric_list.append(m(nflow=hparams[POOL_SIZE]))
 
 
     flow.compile(
         optimizer=optimizers[hparams[OPTIMIZER]](hparams[LR]),
         loss=loss_fn,
     )
-
-
-
+    from time import time
+    T = time()
     flow.fit(
         np.zeros(hparams[STEP_PER_EPOCH]),
         initial_epoch=0,
@@ -256,11 +256,17 @@ def train_test_model(hparams,log_dir=None):
         batch_size=1,
         callbacks=[
             FlowSizeStop(),
-            # tf.keras.callbacks.TerminateOnNaN(),
+            tf.keras.callbacks.TerminateOnNaN(),
             Replay,
-            tf.keras.callbacks.TensorBoard(log_dir=log_dir),
-            tf.keras.callbacks.LearningRateScheduler(lr_schedule[hparams[LR_SCHEDULE]]),
-            reg_fn_alpha_schedules[hparams[REG_FN_alpha_SCHEDULE]]()
+            tf.keras.callbacks.TensorBoard(log_dir=log_dir+'profile',
+                                           histogram_freq = 1, profile_batch = (2,20)
+                                           ),
+            # tf.keras.callbacks.LearningRateScheduler(lr_schedule[hparams[LR_SCHEDULE]]),
+            # reg_fn_alpha_schedules[hparams[REG_FN_alpha_SCHEDULE]]()
         ]
     )
+
+    # print(flow.FlowEstimator.kernel.summary())
+    if test:
+        return flow
     return flow.evaluate()

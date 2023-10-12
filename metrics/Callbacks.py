@@ -3,8 +3,6 @@ import os
 import tensorflow as tf
 import numpy as np
 from time import time
-from collections import Counter
-from Graphs.CayleyGraph import path_representation
 
 from datetime import datetime
 
@@ -39,10 +37,10 @@ class ReplayBuffer(tf.keras.callbacks.Callback):
                 ][epoch]
             else:
                 return (0.99, 0.01)
-        print('Update training dist...')
+        # print('Update training dist...')
         T = time()
         self.model.update_training_distribution(exploration=0.,alpha=schedule(epoch-1))
-        print('done in %s seconds' % (time()-T))
+        # print('done in %s seconds' % (time()-T))
 
 
 class FlowSizeStop(tf.keras.callbacks.Callback):

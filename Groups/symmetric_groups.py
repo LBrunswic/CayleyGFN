@@ -69,19 +69,14 @@ class SymmetricUniform():
         self.n = n
         self.dtype = 'int32'
         # self.g = tf.random.Generator.from_seed(1234)
-        self.g = np.random.default_rng(seed=1234)
+        # self.g = tf.random.default_rng(seed=1234)
         self.batch = {}
-    def sample(self,batch_size):
+    def sample(self,shape):
         n = self.n
-        return np.argsort(self.g.uniform(0,1,(batch_size,n)),axis=1).astype('int32')
-        # if batch_size not in self.batch:
-        #     self.batch[batch_size] = tf.Variable(tf.zeros((batch_size,n),dtype=self.dtype),dtype=self.dtype)
-        # perm = self.batch[batch_size]
-        # perm.assign()
-        # return perm
+        return tf.cast(tf.argsort(tf.random.normal((*shape,n)),axis=-1),'int32')
 
-    def density(self,position_batch):
-        return tf.ones(position_batch.shape[:-1])
+    def density(self, position_batch, axis=-1):
+        return tf.ones((*position_batch.shape[:axis],*position_batch.shape[axis+1:] ))
 
 class Modal():
     def __init__(self,n,modes,logits=None):

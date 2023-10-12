@@ -24,15 +24,15 @@ def rhat_error(fior, total_r, initial_flow, delta=1e-8):
 
 
 class ExpectedLen(tf.keras.metrics.Metric):
-    def __init__(self, cutoff=None, name='ExpectedLength', **kwargs):
+    def __init__(self, cutoff=None, nflow=1, name='ExpectedLength', **kwargs):
         super(ExpectedLen, self).__init__(name=name, **kwargs)
         self.cutoff = cutoff
-        self.length = self.add_weight(name='length', initializer='zeros')
+        self.length = self.add_weight(shape=(nflow,),name='ExpectedLength', initializer='zeros')
         self.n = self.add_weight(name='n_sample', initializer='zeros')
 
     @tf.function
     def expected_len(self, density):
-        return tf.reduce_mean(tf.reduce_sum(density, axis=1))
+        return tf.reduce_mean(tf.reduce_sum(density, axis=1),axis=0)
 
     def update_state(self, flownu, reg_gradients, sample_weight=None):
         density = tf.math.exp(flownu[..., 4])
@@ -43,37 +43,47 @@ class ExpectedLen(tf.keras.metrics.Metric):
         self.length.assign_add(expexted_len)
         self.n.assign_add(1.)
 
+    def reset_state(self):
+        # pass
+        self.length.assign(tf.zeros_like(self.length))
+        self.n.assign(tf.zeros_like(self.n))
+
     def result(self):
         return self.length / self.n
 
 
 class ExpectedMaxSeenReward(tf.keras.metrics.Metric):
-    def __init__(self, cutoff=None, name='EMaxSeenRew', **kwargs):
+    def __init__(self, cutoff=None, nflow=1, name='EMaxSeenRew', **kwargs):
         super(ExpectedMaxSeenReward, self).__init__(name=name, **kwargs)
         self.cutoff = cutoff
-        self.max_reward = self.add_weight(name='max_reward', initializer='zeros')
+        self.max_reward = self.add_weight(shape=(nflow,), name='EMaxSeenReward', initializer='zeros')
         self.n = self.add_weight(name='n_sample', initializer='zeros')
 
     def update_state(self, flownu, reg_gradients, sample_weight=None):
         reward = flownu[..., 5]
-        self.max_reward.assign_add(tf.reduce_mean(tf.reduce_max(reward, axis=1)))
+        self.max_reward.assign_add(tf.reduce_mean(tf.reduce_max(reward, axis=1),axis=0))
         self.n.assign_add(1.)
-
+    def reset_state(self):
+        pass
+        self.max_reward.assign(tf.zeros_like(self.max_reward))
+        self.n.assign(0)
     def result(self):
         return self.max_reward / self.n
 
 
 class MaxSeenReward(tf.keras.metrics.Metric):
-    def __init__(self, cutoff=None, name='MaxSeenRew', **kwargs):
+    def __init__(self, cutoff=None, nflow=1, name='MaxSeenRew', **kwargs):
         super(MaxSeenReward, self).__init__(name=name, **kwargs)
         self.cutoff = cutoff
-        self.max_reward = self.add_weight(name='MaxSeenReward', initializer='zeros')
+        self.max_reward = self.add_weight(shape=(nflow,),name='MaxSeenReward', initializer='zeros')
         # self.n = self.add_weight(name='n_sample', initializer='zeros')
 
     def update_state(self, flownu, reg_gradients, sample_weight=None):
         reward = flownu[..., 5]
-        self.max_reward.assign(tf.reduce_max([tf.reduce_max(reward), self.max_reward]))
-        # self.n.assign_add(1.)
+        self.max_reward.assign(tf.reduce_max(tf.stack([tf.reduce_max(tf.reduce_max(reward,axis=0), axis=0), self.max_reward]), axis=0))
+
+    def reset_state(self):
+        self.max_reward.assign(tf.zeros_like(self.max_reward))
 
     def result(self):
         return self.max_reward
@@ -85,52 +95,43 @@ def expected_reward_fn(foutstar, path_reward, density, delta=1e-20):
 
 
 class ExpectedReward(tf.keras.metrics.Metric):
-    def __init__(self, cutoff=None, name='ExpectedReward', **kwargs):
+    def __init__(self, name='ExpectedReward', nflow=1, **kwargs):
         super(ExpectedReward, self).__init__(name=name, **kwargs)
-        self.cutoff = cutoff
-        self.reward = self.add_weight(name='reward', initializer='zeros')
+        self.reward = self.add_weight(shape=(nflow,), name='Expected_reward', initializer='zeros')
     
     def update_state(self, flownu, reg_gradients, sample_weight=None):
         density = tf.math.exp(flownu[..., 4])
         reward = flownu[..., 2]
         rescale = tf.reduce_max(flownu[..., 5])/tf.reduce_max(flownu[..., 2])
         foutstar = flownu[..., 1]
-        if self.cutoff is None:
-            expected_reward = expected_reward_fn(foutstar, reward, density)*rescale
-        else:
-            expected_reward = rescale*self.expected_reward(
-                foutstar[:self.cutoff],
-                reward[:self.cutoff],
-                density[:self.cutoff]
-            )
+        expected_reward = expected_reward_fn(foutstar, reward, density)*rescale
         self.reward.assign(expected_reward)
+
+    def reset_state(self):
+        pass
 
     def result(self):
         return self.reward
 
 
 class FlowSize(tf.keras.metrics.Metric):
-    def __init__(self, cutoff=None, name='FlowSize', **kwargs):
+    def __init__(self, nflow=1,  name='FlowSize', **kwargs):
         super(FlowSize, self).__init__(name=name, **kwargs)
-        self.cutoff = cutoff
-        self.flow = self.add_weight(name='flow', initializer='zeros')
+        self.flow = self.add_weight(shape=(nflow,), name='flow', initializer='zeros')
 
     def update_state(self, flownu, reg_gradients, sample_weight=None):
-
-        if self.cutoff is None:
-            flow = tf.reduce_max(flownu[..., 1])
-        else:
-            flow = tf.reduce_max(flownu[:self.cutoff, 1])
+        flow = tf.reduce_max(tf.reduce_max(flownu[..., 1],axis=0),axis=0)
         self.flow.assign(flow)
+    def reset_state(self):
+        self.flow.assign(tf.zeros_like(self.flow))
 
     def result(self):
         return self.flow
 
 
 class RandomCheck(tf.keras.metrics.Metric):
-    def __init__(self, cutoff=None, name='RandomCheck', **kwargs):
+    def __init__(self, name='RandomCheck', nflow=None, **kwargs):
         super(RandomCheck, self).__init__(name=name, **kwargs)
-        self.cutoff = cutoff
         self.random = self.add_weight(name='RandomCheck', initializer='zeros')
 
     def update_state(self, flownu, reg_gradients, sample_weight=None):
@@ -141,33 +142,31 @@ class RandomCheck(tf.keras.metrics.Metric):
 
 
 class PathLeak(tf.keras.metrics.Metric):
-    def __init__(self, cutoff=None, name='PathLeak', **kwargs):
+    def __init__(self, nflow=1, name='PathLeak', **kwargs):
         super(PathLeak, self).__init__(name=name, **kwargs)
-        self.cutoff = cutoff
-        self.path_leak = self.add_weight(name='path_leak', initializer='zeros')
+        self.path_leak = self.add_weight(shape=(nflow,), name='path_leak', initializer='zeros')
 
     def update_state(self, flownu, reg_gradients, sample_weight=None):
         logdensity_trainable = flownu[..., 4]
-        expected_leak = tf.reduce_mean(logdensity_trainable[:, -1])
+        expected_leak = tf.reduce_mean(logdensity_trainable[:, -1], axis=0)
         self.path_leak.assign(expected_leak)
 
+    def reset_state(self):
+        self.path_leak.assign(tf.zeros_like(self.path_leak))
     def result(self):
         return self.path_leak
 
-class PathAccuracy(tf.keras.metrics.Metric):
-    def __init__(self, cutoff=None, name='PathAccuracy', **kwargs):
-        super(PathAccuracy, self).__init__(name=name, **kwargs)
-        self.cutoff = cutoff
-        self.accuracy = self.add_weight(name='path_accuracy', initializer='zeros')
 
-    def update_state(self, flownu, reg_gradients, sample_weight=None):
-        logdensity = flownu[..., 4]
-        path_reward = flownu[..., 5]
-        total_reward = tf.reduce_sum(path_reward,axis=1,keepdims=True)
-        density = tf.concat([tf.exp(logdensity), tf.zeros_like(logdensity[:, :1])],axis=1)
-        tau_distribution = density[...,:-1] - density[...,1:]
-        accuracy = tf.reduce_mean(tf.reduce_sum(tf.math.log(1e-20 + tf.abs(tau_distribution - path_reward / total_reward)),axis=1))
-        self.accuracy.assign(accuracy)
+class InitFlowMetric(tf.keras.metrics.Metric):
+    def __init__(self, nflow=1, name='initflow', **kwargs):
+        super(InitFlowMetric, self).__init__(name=name, **kwargs)
+        self.initflow = self.add_weight(shape=(nflow,), name=name, initializer='zeros')
+
+    def update_state(self,init_estimate, sample_weight=None):
+        self.initflow.assign(init_estimate)
+
+    def reset_state(self):
+        self.initflow.assign(tf.zeros_like(self.initflow))
 
     def result(self):
-        return self.accuracy
+        return self.initflow

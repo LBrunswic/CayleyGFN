@@ -8,45 +8,20 @@ from time import time
 
 def R_zero(*arg,**kwarg):
     @tf.function
-    def R(x):
+    def R(x,*fargs,**fkwargs):
         return tf.zeros_like(x[:,0],dtype='float32')
     return R
 
 
 def R_one(*arg,dtype= tf.float32,**kwarg):
     @tf.function
-    def R(x):
+    def R(x,*fargs,**fkwargs):
         return tf.ones(x.shape[0],dtype='float32')
     return R
 
 
-def R_first_k(scale,k,*arg,dtype= tf.float32,**kwarg):
-    target =  tf.constant(np.arange(k).reshape(1,-1),dtype=dtype)
-    @tf.function
-    def R(x):
-        return scale*tf.nn.relu(1-2*tf.norm(tf.cast(x[:,:k],'float32')-target,ord=1,axis=1))
-    return R
-
-def R_first_k_reverse(scale,k,*arg,dtype= tf.float32,**kwarg):
-    target =  tf.constant(np.arange(k)[::-1].reshape(1,-1),dtype=dtype)
-    @tf.function
-    def R(x):
-        return scale*tf.nn.relu(1-2*tf.norm(tf.cast(x[:,:k],'float32')-target,ord=1,axis=1))
-    return R
 
 
-def Manhattan(size,*arg,width=1,dtype= tf.float32,**kwarg):
-    center = tf.constant(tf.cast(np.arange(width),dtype))
-    # a = np.power(1e-4,1/size)
-    # score = tf.constant(a**np.arange(size),dtype=dtype)
-    # v = tf.constant(np.arange(width).reshape(1,1,-1),dtype=dtype)
-    # hot = lambda x: tf.nn.relu(1+x)*tf.nn.relu(1-x)
-    def R(x):
-        # raw_score = tf.einsum('ijk,j->i', hot(tf.expand_dims(x,-1)-v), score )
-        return (tf.linalg.norm(tf.cast(x,dtype)[:,:width]-center,ord=1,axis=1)+1e-1)**(-1)
-        # return tf.nn.relu(1-0.01*tf.linalg.norm(tf.cast(x,dtype)[:,:width]-center,ord=1,axis=1))
-        # return raw_score
-    return R
 
 def TwistedManhattan(size,*arg,width=1,scale=-100,factor=1.,dtype= tf.float32,delta=1e-20,exp=False,mini=1,**kwarg):
     # print(size,width,arg,factor,scale,dtype,kwarg)
@@ -55,7 +30,7 @@ def TwistedManhattan(size,*arg,width=1,scale=-100,factor=1.,dtype= tf.float32,de
     score = factor*tf.constant(tf.math.exp(a*tf.range(size,dtype=dtype)),dtype=dtype)
     score = np.stack([np.roll(np.concatenate([score[::-1],score[1:]]),i)[size-1:size-1+width] for i in range(size)])
     # print(score)
-    v = tf.constant(np.arange(width).reshape(1,1,-1),dtype=dtype)
+    v = tf.constant(np.arange(width),dtype=dtype)
     hot = lambda x: tf.nn.relu(1+x)*tf.nn.relu(1-x)
     indicator = lambda x: tf.cast(tf.greater(x, mini-delta), dtype=tf.float32)
     final = lambda x : x
@@ -64,17 +39,18 @@ def TwistedManhattan(size,*arg,width=1,scale=-100,factor=1.,dtype= tf.float32,de
     else:
         final = lambda x : x
     # print(score.shape)
-    @tf.function
-    def R(x):
+    # @tf.function
+    def R(x,axis=-1):
+        # print(x.shape)
         x = tf.cast(x,'float32')
-        raw_score = tf.einsum('ijk,jk->i', hot(tf.expand_dims(x,-1)-v), score )
+        # print(x.shape)
+        x = tf.experimental.numpy.swapaxes(x,-1,axis)
+        # print(x.shape)
+        x = tf.expand_dims(x,-1)
+        # print(x.shape)
+        raw_score = tf.einsum('...jk,jk->...', hot(x-v), score)
+        tf.experimental.numpy.swapaxes(x, -1, axis)
         return delta+final(indicator(raw_score)*raw_score)
-    return R
-
-def H_first_one(*arg,dtype=tf.float32,**kwarg):
-    @tf.function(input_signature=[tf.TensorSpec(shape=(None,54), dtype=tf.float32)])
-    def R(x):
-        return 54/(1+tf.math.abs(x[:,0]))
     return R
 
 
@@ -123,5 +99,6 @@ class Reward():
     def update_reward(self,epoch=0):
         self.balance.set_weights([self.schedule(epoch=epoch)])
 
-    def __call__(self, *args, **kwargs):
-        return self.balance(self.reward_fn(*args,**kwargs),self.heuristic_fn(*args,**kwargs))
+    def __call__(self, state_batch, *args, **kwargs):
+        return self.reward_fn(state_batch, *args, **kwargs)
+        # return self.balance(self.reward_fn(state_batch, *args, **kwargs), self.heuristic_fn(state_batch, *args, **kwargs))

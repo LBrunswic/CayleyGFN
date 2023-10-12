@@ -63,5 +63,5 @@ class Norm2_gen(tf.keras.Model):
         self.logpmin = tf.Variable(logpmin, trainable=False, dtype='float32')
     @tf.function
     def call(self,Flownu):
-        return self.alpha * tf.reduce_mean(tf.linalg.norm(Flownu[..., 0]+Flownu[..., 1],ord=2,axis=1))
+        return tf.reduce_sum(self.alpha * tf.reduce_mean(tf.linalg.norm(Flownu[..., 0] + Flownu[..., 1], ord=2, axis=1),axis=0))
 
