@@ -71,11 +71,20 @@ def schedule_add(epoch=0):
     h = 1
     return np.array([r,h])
 
+reward_map = {
+    'R_zero' : R_zero,
+    'TwistedManhattan': TwistedManhattan
+}
+
 class Reward():
     def __init__(
             self,
             reward_fn=R_one(),
+            reward_args=(),
+            reward_kwargs={},
             heuristic_fn=R_zero(),
+            heuristic_args=(),
+            heuristic_kwargs={},
             memory=False,
             name='one',
             base_folder='Knowledge',
@@ -84,8 +93,8 @@ class Reward():
             schedule=schedule_add,
     ):
         self.name = name
-        self.reward_fn = reward_fn
-        self.heuristic_fn = heuristic_fn
+        self.reward_fn = reward_map[reward_fn](*reward_args,**reward_kwargs)
+        self.heuristic_fn = reward_map[reward_fn](*heuristic_args,**heuristic_kwargs)
         self.schedule = schedule
         self.balance = balance
         self.memory = memory

@@ -105,9 +105,9 @@ class MeanABError(tf.keras.losses.Loss):
         Finit = Flownu[..., 3]
         logdensity_trainable = Flownu[..., 4]
 
-        cutoff = self.cutoff(Flownu,finit)
-        cutoff_normalization = tf.reduce_sum(cutoff,axis=1,keepdims=True) / tf.reduce_sum(tf.ones_like(cutoff),axis=1,keepdims=True)
-        cutoff = tf.stop_gradient(cutoff/cutoff_normalization)
+        # cutoff = self.cutoff(Flownu,finit)
+        # cutoff_normalization = tf.reduce_sum(cutoff,axis=1,keepdims=True) / tf.reduce_sum(tf.ones_like(cutoff),axis=1,keepdims=True)
+        # cutoff = tf.stop_gradient(cutoff/cutoff_normalization)
         cutoff = 1.
 
         normalization = tf.stop_gradient(self.normalization_fn(Flownu,finit))
@@ -119,3 +119,8 @@ class MeanABError(tf.keras.losses.Loss):
         Ldelta = tf.reduce_sum(tf.reduce_mean(tf.reduce_sum(cutoff*density_fixed*self.A((Foutstar+R-Finstar-Finit)/normalization)*self.B(Finstar/normalization, Foutstar/normalization),axis=1),axis=0),-1)
         return Ldelta
 
+
+
+cutoff_fns = {
+    'none' : lambda flownu,finit: 1.,
+}

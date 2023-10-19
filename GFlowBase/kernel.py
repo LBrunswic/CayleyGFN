@@ -41,6 +41,7 @@ class multi_softmax_head(tf.keras.layers.Layer):
     def call(self, inputs):
         f = self.kernel(inputs)
         return tf.math.exp(f[:, :, :,-1:]) * tf.nn.softmax(f[:, :, :, :-1], axis=3)
+
 class multi_softmax_head_timedistribute(tf.keras.layers.Layer):
     def __init__(self,kernel):
         super(multi_softmax_head_timedistribute, self).__init__()

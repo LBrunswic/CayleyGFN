@@ -25,11 +25,11 @@ def cycle_dec_to_array(n,cycles=[],start=0,dtype='float32'):
 
 
 
-def rubick_generators(n):
+def rubick_generators(n,dtype='int32'):
     if n!=48:
         raise NotImplementedError('The size of the permutation group should be 48')
     generators = [
-        cycle_dec_to_array(n,sigma,start=1,dtype=int)
+        cycle_dec_to_array(n,sigma,start=1,dtype=dtype)
         for sigma in [
             [(1, 3, 8, 6),(2, 5, 7, 4),(9, 33, 25, 17),(10, 34, 26, 18),(11, 35, 27, 19)],
             [(9, 11, 16, 14),(10, 13, 15, 12),(1, 17, 41, 40),(4, 20, 44, 37),(6, 22, 46, 35)],
@@ -64,21 +64,23 @@ def inversion(sigma):
     return np.unique(sigma,return_index=True)[1]
 
 
-class SymmetricUniform():
-    def __init__(self,n):
+class SymmetricUniform:
+    def __init__(self,n,group_dtype='int32',density_dtype='float32'):
         self.n = n
-        self.dtype = 'int32'
+        self.group_dtype = group_dtype
+        self.density_dtype = density_dtype
         # self.g = tf.random.Generator.from_seed(1234)
         # self.g = tf.random.default_rng(seed=1234)
         self.batch = {}
     def sample(self,shape):
         n = self.n
-        return tf.cast(tf.argsort(tf.random.normal((*shape,n)),axis=-1),'int32')
+        return tf.cast(tf.argsort(tf.random.normal((*shape,n)),axis=-1),dtype=self.group_dtype)
 
     def density(self, position_batch, axis=-1):
-        return tf.ones((*position_batch.shape[:axis],*position_batch.shape[axis+1:] ))
+        return tf.ones((*position_batch.shape[:axis],*position_batch.shape[axis+1:]),dtype=self.density_dtype)
 
-class Modal():
+
+class Modal:
     def __init__(self,n,modes,logits=None):
         self.n = n
         print(n)

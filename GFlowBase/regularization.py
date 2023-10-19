@@ -65,3 +65,12 @@ class Norm2_gen(tf.keras.Model):
     def call(self,Flownu):
         return tf.reduce_sum(self.alpha * tf.reduce_mean(tf.linalg.norm(Flownu[..., 0] + Flownu[..., 1], ord=2, axis=1),axis=0))
 
+reg_post_choices = {
+    'OrthReg': proj_reg,
+    'AddReg':  straight_reg,
+}
+
+reg_fn_gen_choices = {
+    'LogPathLen': LogPathLen_gen,
+    'norm2': Norm2_gen,
+}

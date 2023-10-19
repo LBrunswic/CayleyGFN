@@ -1,11 +1,9 @@
-import numpy as np
 import sys
-import os
+from copy import copy
+
 sys.path.append("../")
 import tensorflow as tf
-import tensorflow_probability as tfp
-from decimal import Decimal
-from metrics import ReplayBuffer,ExpectedLen,ExpectedReward
+
 
 @tf.function
 def gradient_add_scalar(self,grad_x,grad_y,s):
@@ -21,21 +19,6 @@ def exploration_forcing(tot,delta,exploration):
 def no_reg(self,loss_gradients,reg_gradients):
     return loss_gradients
 
-@tf.function
-def next_action1(gathered,pos):
-    return tf.einsum(
-                        'bcij,bjc->bic',
-                        gathered, pos,
-                        name='ApplyActionEinsum'
-                    )
-
-@tf.function
-def next_action1(gathered,pos):
-    return tf.einsum(
-                        'bcij,bjc->bic',
-                        gathered, pos,
-                        name='ApplyActionEinsum'
-                    )
 
 
 @tf.function
@@ -61,11 +44,13 @@ class MultiGFlowCayleyLinear(tf.keras.Model):
                  reg_fn=lambda x:tf.constant(0.),
                  grad_batch_size=10,
                  reward_rescale_estimator=None,
+                 logger=None,
                  **kwargs
         ):
         if name is None:
             name = 'flow_on_'+graph.name
         super(MultiGFlowCayleyLinear, self).__init__(name=name, **kwargs)
+        self.logger = logger
         self.metric_list = [tf.keras.metrics.Mean(name="loss")]
         self.ncopy = ncopy
         self.graph = graph
@@ -98,9 +83,19 @@ class MultiGFlowCayleyLinear(tf.keras.Model):
         self.batch_size = batch_size
         self.reg_post=reg_post
         self.reg_fn = reg_fn
+        self.initialized = False
+        self.initial_kernel = []
+
+    def initialize(self):
+        if not self.initialized:
+            self(0)
+            self.initialized = True
+            self.initial_kernel = [copy(var.numpy()) for var in self.trainable_variables]
+        else:
+            for i,var in enumerate(self.trainable_variables):
+                var.assign(self.initial_kernel[i])
 
     def build(self,input_shape):
-        # self.FlowEstimator.build((None,None,None,self.embedding_dim,self.ncopy))
         self.id_action = tf.constant(
             tf.concat([
                 tf.reshape(tf.eye(self.graph.group_dim,dtype=self.graph.group_dtype),(1,self.graph.group_dim,self.graph.group_dim)),
@@ -143,51 +138,7 @@ class MultiGFlowCayleyLinear(tf.keras.Model):
         self.action_step = tf.keras.layers.Dot(axes=(-1,1))
         self.encoding = tf.keras.layers.CategoryEncoding(num_tokens=self.nactions)
 
-        self.embedding_layer = tf.keras.layers.Lambda(
-            lambda x: self.permute(self.graph.embedding_fn(self.permute(x))),
-            output_shape=(self.embedding_dim,self.ncopy),
-            name='Embedding'
 
-        )
-        # tf.broadcast_to(self.graph.actions, (self.batch_size, *self.graph.actions.shape))
-
-        self.Categorical = tf.keras.layers.Lambda(
-            lambda F_r: tf.gather(
-                self.graph.actions,
-                tf.argmin(
-                    tf.cumsum(tf.cast(F_r[:,:-1], 'float32'), axis=1) / tf.reduce_sum(F_r[:,:-1], axis=1, keepdims=True) < F_r[:,-1:],
-                    axis=1
-                )
-            ),
-            name='Categorical'
-        )
-
-        self.flow_base= tf.keras.Sequential([
-            tf.keras.layers.Reshape((1, 1, self.embedding_dim, self.ncopy)),
-            self.FlowEstimator,
-            tf.keras.layers.Lambda(lambda x: x[:,0,0],name='Squeeze')
-        ])
-        self.permute = tf.keras.layers.Permute((2,1))
-
-
-        self.apply_action = tf.keras.layers.Lambda(lambda gathered,pos: tf.linalg.matvec(gathered, pos,name='ApplyAction'))
-        seeded_uniform_positions = tf.keras.layers.Input(shape=(self.path_length-1+self.graph.group_dim, self.ncopy))
-        seeded_uniform, position = tf.split(seeded_uniform_positions,[self.path_length-1,self.graph.group_dim],axis=1)
-        positions = [tf.cast(position,'int32')] #bjc
-        embedded_positions = [self.embedding_layer(positions[-1])] #(bec)
-        actions = []
-        seeded_uniform_split = tf.split(seeded_uniform,self.path_length-1,axis=1)
-        for i in range(self.path_length-1):
-            F_r = tf.concat([self.flow_base(embedded_positions[-1]), seeded_uniform_split[i]], axis=1)
-            gathered = self.Categorical(F_r) # bcij
-            prev_pos = tf.transpose(positions[-1], perm=(0,2,1))
-            positions.append(
-                self.permute(tf.linalg.matvec(gathered, prev_pos, name='ApplyAction')) # bcij,bcj
-            )
-            embedded_positions.append(self.embedding_layer(positions[-1]))
-
-        outputs = tf.stack(positions,axis=1), tf.stack(embedded_positions,axis=1)
-        self.gen_path_model = tf.keras.Model(inputs=seeded_uniform_positions,outputs=outputs,name='Gen')
 
     def call(self,inputs):
         forward_edges = self.forward_edges
@@ -204,7 +155,7 @@ class MultiGFlowCayleyLinear(tf.keras.Model):
         self.paths.assign(tf.roll(self.paths,shift=1,axis=0))
         self.paths_actions.assign(tf.roll(self.paths_actions,shift=1,axis=0))
 
-    @tf.function
+    # @tf.function
     def update_reward(self):
         self.paths_reward.assign(self.reward(self.paths_true[0], axis=-2))
     # @tf.function
@@ -212,8 +163,6 @@ class MultiGFlowCayleyLinear(tf.keras.Model):
         f_out = tf.reduce_sum(self.FlowEstimator(forward_edges[:, :, 0:1])[:,:,0,:,:],axis=-2)
         R = paths_reward/self.reward_rescale
         f_init = path_init_flow * self.initflow_estimate() * self.reward_rescale
-
-
         f_in = tf.reduce_sum(
             tf.experimental.numpy.swapaxes(
                 tf.linalg.diag_part(tf.experimental.numpy.swapaxes(
@@ -224,8 +173,6 @@ class MultiGFlowCayleyLinear(tf.keras.Model):
             axis=-2
         )
         delta=1e-20
-        # print('fout',f_out.shape)
-        # print('R',R.shape)
         p = tf.math.cumsum(
             tf.math.log(delta + f_out) - tf.math.log(delta + f_out + R),
             exclusive=True,
@@ -233,83 +180,43 @@ class MultiGFlowCayleyLinear(tf.keras.Model):
         )
         return tf.stack([f_in, f_out, R, f_init, p, paths_reward], axis=-1)
 
-    @tf.function
-    def gen_path2_old(self, initial, delta=1e-20, exploration=0.):
-        self.paths_true[:, :, 0].assign(initial) #grad_batch, batch, time, final
-        self.paths[:, :, 0].assign(self.graph.embedding(self.paths_true[:, :, 0], axis=-2))
-        for j in tf.range(self.grad_batch_size):
-            for i in tf.range(self.path_length - 1):
-                f_out = self.FlowEstimator(tf.expand_dims(self.paths[j, :, i:i+1],2))
-                f_out_trans = tf.reshape(tf.experimental.numpy.swapaxes(f_out, -1, -2), (-1, self.graph.nactions))
-                self.paths_actions[j, :, i].assign(
-                    tf.reshape(
-                        tf.random.categorical(
-                            tf.math.log(delta + f_out_trans),
-                            1,
-                            dtype=self.paths_actions.dtype,
-                            name='SampleNext'
-                        )
-                        ,
-                        (-1,self.ncopy),
-                        name='Categoricalreshape'
-                    )
-                )
-                #
-                # gathered = self.action_step([
-                #     tf.cast(self.encoding(self.paths_actions[j, :, i]),'int32'),
-                #     tf.broadcast_to(self.graph.actions,(self.batch_size,*self.graph.actions.shape))
-                # ])
-                # next_pos = next_action2(gathered, self.paths_true[j, :, i])
 
-                gathered = tf.gather(self.graph.actions, self.paths_actions[j, :, i], name='GatherActions')
-                pos = self.paths_true[j, :, i]
-                next_pos = next_action2(gathered, pos)
-                self.paths_true[j, :, i + 1].assign(next_pos)
-                self.paths[j, :, i+1].assign(self.graph.embedding(self.paths_true[0, :, i+1],axis=-2))
-
-    @tf.function
-    def gen_path(self, initial, delta=1e-20, exploration=0.):
-        for j in tf.range(self.grad_batch_size):
-                seeded_uniform = tf.random.uniform(shape=(self.batch_size, self.path_length-1, self.ncopy))
-                true_paths, embedded_paths = self.gen_path_model(tf.concat([tf.cast(initial[j],'float32'), seeded_uniform],axis=1))
-                self.paths_true[j].assign(true_paths)
-        # self.paths.assign(self.graph.embedding(self.paths_true,axis=-2))
-        self.paths.assign(self.graph.embedding(self.paths_true,axis=-2))
-
-    @tf.function
+    # @tf.function
     def update_edges(self):
-        self.forward_edges.assign(self.graph.embedding(tf.einsum('aij,btjc->btaic', self.id_action, self.paths_true[0]),axis=-2))
+        # self.forward_edges.assign(self.graph.embedding(tf.einsum('aij,btjc->btaic', self.id_action, self.paths_true[0]),axis=-2))
         self.backward_edges.assign(self.graph.embedding(tf.einsum('aij,btjc->btaic', self.id_action_inverse, self.paths_true[0]),axis=-2))
-    @tf.function
+    # @tf.function
     def update_init_flow(self):
         self.path_init_flow.assign(self.graph.density(self.paths_true[0], axis=-2))
-    @tf.function
+    # @tf.function
     def update_embedding(self):
         self.paths.assign(self.graph.embedding(self.paths_true, axis=-2))
 
     # @tf.function
-    def update_training_distribution(self,delta=1e-20,exploration=0.,alpha=(0.9, 0.1)):
-        initial = self.graph.sample(shape=(self.grad_batch_size, self.batch_size, self.ncopy), axis=-2)
-        self.gen_path(initial, exploration=exploration)
+    def update_training_distribution(self):
+        alpha = (0.9, 0.1)
         self.update_reward()
         self.update_edges()
-        self.update_init_flow()
+
+
+        self.reward_rescale.assign(self.reward_rescale_estimator.fn_call())
+    def update_flow_init(self,alpha):
         self.initial_flow.assign(tf.math.log(
             (
-                alpha[0]*self.initflow_estimate() +
-                alpha[1]*self.aux_initflow_estimate1()
+                    alpha[0] * self.initflow_estimate() +
+                    alpha[1] * self.aux_initflow_estimate1()
             ) / self.ref_initflow
         ))
-        self.reward_rescale.assign(self.reward_rescale_estimator.fn_call())
+        self.update_init_flow()
 
     def evaluate(self, **kwargs):
-       return {m.name : m.result() for m in self.metrics}
+        return {m.name: tf.broadcast_to(m.result(),(self.ncopy,)) for m in self.metrics}
 
-    @tf.function
+    # @tf.function
     def initflow_estimate(self):
         return tf.math.exp(self.initial_flow)*self.ref_initflow
 
-    @tf.function
+    # @tf.function
     def aux_initflow_estimate1(self):
         return tf.reduce_mean(self.paths_reward[:,0])
 
@@ -363,6 +270,9 @@ class MultiGFlowCayleyLinear(tf.keras.Model):
         self.reward_rescale_estimator.update_state(Flownu)
         a = zip(self.reg_post(self, loss_gradients, reg_gradients), trainable_vars)
         self.optimizer.apply_gradients(a)
+        print('COMPILE')
+        # for  m in self.metrics:
+        #     print(m.name,m.result())
         return {
             m.name : m.result()[0]
             for m in self.metrics

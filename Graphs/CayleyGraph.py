@@ -5,7 +5,7 @@ from Groups.symmetric_groups import *
 from scipy.linalg import block_diag
 import os
 
-
+D_TYPE = 'float32'
 class CayleyGraphLinearEmb():
     def __init__(self,
                  direct_actions,
@@ -43,13 +43,13 @@ class CayleyGraphLinearEmb():
 
     def iter(self,depth):
         N = self.group_dim
-        base = np.arange(N,dtype='int32').reshape(1,-1)
+        base = np.arange(N,dtype=self.group_dtype).reshape(1,-1)
         for i in range(depth):
             old = [tuple(x) for x in base]
             old_set = set(old)
             new = list(set([tuple(x) for x in base[...,self.generators].reshape(-1,N) if tuple(x) not in old_set]))
             base = np.array(old+new)
-        return tf.constant(np.array([self.representation(g) for g in  base],dtype='int32'))
+        return tf.constant(np.array([self.representation(g) for g in  base],dtype=self.group_dtype))
 
     def sample(self, shape,axis=-1):
         if isinstance(shape,int):
@@ -104,16 +104,17 @@ def hot(n,*args,omega=1,**kwarg):
         return tf.reshape(tf.one_hot(paths,n),(*paths.shape[:-1], n*n,))
     return aux,n*n
 pi = np.math.pi
-def hotalpha(n,*args,omega=1,**kwarg):
-    alpha = tf.reshape(tf.math.exp(-10*np.arange(n,dtype='float32')),(n,1))
+def hotalpha(n,*args,omega=1,dtype=D_TYPE,**kwarg):
+    alpha = tf.reshape(tf.math.exp(-10*np.arange(n,dtype=dtype)),(n,1))
     Id = tf.eye(n)*alpha
     def aux(paths):
-        return tf.cast(tf.reshape(tf.gather(Id,paths),(*paths.shape[:-1], n*n,) ),'float32')
+        return tf.cast(tf.reshape(tf.gather(Id,paths),(*paths.shape[:-1], n*n,) ),dtype)
     return aux,n*n
+
 Embeddings = {
-    'natural': lambda n,*args,**kwarg: (lambda x: tf.cast(x,'float32')/tf.cast(n,'float32'),n),
-    'cos': lambda n,*args,omega=1,**kwarg: (lambda x: tf.math.cos(2*omega*pi*tf.cast(x,'float32')/n),n),
-    'sin': lambda n,*args,omega=1,**kwarg: (lambda x: tf.math.sin(2*omega*pi*tf.cast(x,'float32')/n),n),
+    'natural': lambda n,*args,dtype=D_TYPE,**kwarg: (lambda x: tf.cast(x,dtype)/tf.cast(n,dtype),n),
+    'cos': lambda n,*args,omega=1,dtype=D_TYPE,**kwarg: (lambda x: tf.math.cos(2*omega*pi*tf.cast(x,dtype)/n),n),
+    'sin': lambda n,*args,omega=1,dtype=D_TYPE,**kwarg: (lambda x: tf.math.sin(2*omega*pi*tf.cast(x,dtype)/n),n),
     'hot': hot,
     'hotalpha': hotalpha
 }
@@ -125,7 +126,7 @@ def Symmetric(
     inverse = False,
     random_gen = None,
     embedding = [('natural',{})],
-    dtype='float32'
+    group_dtype='int32'
 ):
     assert(random_gen is not None)
     generators,involutions,diameter = SymmetricGenerators[generators](n)
@@ -141,11 +142,11 @@ def Symmetric(
     direct_actions = tf.cast(tf.stack([
         block_diag(*[rho(gen) for rho,_ in R_list])
         for gen in generators
-    ]),'int32')
+    ]),group_dtype)
     inverse_actions = tf.cast(tf.stack([
         block_diag(*[rho(inversion(gen)) for rho,_ in R_list])
         for gen in generators
-    ]),'int32')
+    ]),group_dtype)
 
 
     E_list = [Embeddings[emb_choice](n,**emb_kwarg) for emb_choice,emb_kwarg in embedding]
@@ -154,5 +155,5 @@ def Symmetric(
     def iota(x):
          return tf.concat([emb(x) for emb,_  in E_list],axis=-1)
 
-    return CayleyGraphLinearEmb(direct_actions, inverse_actions, diameter, generators=generators,rep_list=R_list,random_gen=random_gen,embedding=iota,embedding_dim=embedding_dim, group_dim=n, name='Sym%s_%s' % (n,generators.numpy()))
+    return CayleyGraphLinearEmb(direct_actions, inverse_actions, diameter, generators=generators,rep_list=R_list,random_gen=random_gen,embedding=iota,embedding_dim=embedding_dim, group_dim=n, name='Sym%s_%s' % (n,generators.numpy()),group_dtype=group_dtype,representation_dtype=D_TYPE)
 

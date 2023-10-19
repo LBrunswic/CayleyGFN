@@ -170,3 +170,14 @@ class InitFlowMetric(tf.keras.metrics.Metric):
 
     def result(self):
         return self.initflow
+
+metrics = [
+        ExpectedReward,
+        ExpectedMaxSeenReward,
+        MaxSeenReward,
+        ExpectedLen,
+        FlowSize,
+        # RandomCheck,
+        InitFlowMetric,
+        PathLeak,
+]
