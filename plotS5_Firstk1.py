@@ -9,14 +9,14 @@ import pandas
 from datetime import datetime
 import sys
 import os
-sns.set_theme(style="darkgrid")
+#sns.set_theme(style="darkgrid")
 
 
 
 timestamp = datetime.now()
 
-FOLDER = 'data/complete_log'
-
+FOLDER = 'data'
+os.makedirs('images',exist_ok=True)
 
 #   ___Definition des Graphes_________
 #   A. Problems
@@ -37,44 +37,10 @@ def load_data(FOLDER):
         data.append(pandas.read_csv(filename))
     data = pandas.concat(data)
     data = data[[x for x in data.columns if 'Unnamed' not in x]]
-    column_type = {
-        'normalization_fn': 'int32',
-        'normalization_nu_fn': 'int32',
-        'reg_fn_alpha': 'float32',
-        'reg_proj': 'str',
-        'reg_fn_logmin': 'float32',
-        'grad_batch_size': 'int32',
-        'batch_size': 'int32',
-        'length_cutoff_factor': 'int32',
-        'initial_flow': 'float32',
-        'learning_rate': 'float32',
-        'epochs': 'int32',
-        'step_per_epoch': 'int32',
-        'B_beta': 'float32',
-        'path_redraw': 'int32',
-        'neighborhood': 'int32',
-        'graph_size': 'int32',
-        'graph_generators': 'str',
-        'inverse': 'bool',
-        'flowestimator_opt': 'str',
-        'seed': 'int32',
-        'embedding': 'str',
-        'optimizer': 'str',
-        'loss_base': 'str',
-        'reg_fn_gen': 'str',
-        'reward_rescale': 'str',
-        'reg_fn_alpha_schedule':'str',
-        'loss_cutoff':'str'
-
-    }
-    for column in column_type:
-        data[column] = data[column].astype(column_type[column])
-    if 'flowestimator_opt.1' in data.columns:
-        data.pop('flowestimator_opt.1')
-
-    return data[data['reg_fn_gen'] != 'PathAccuracy']
-
+    return data
+print('LOADING DATA...',end='')
 data = load_data(FOLDER)
+print('DONE!')
 
 def data_get(filter, data):
     data_here = pandas.DataFrame(data)
@@ -94,9 +60,11 @@ def make_graph(
     preTTT = lambda x:x,
     cmap = ['red','blue','green','orange','purple','gold','darkgreen','cyan'],
     y_range = (0,1,0.05,1),
+    log_scale=False,
 ):
     data_here = data_get(filter,data)
-
+    print(filter)
+    # print(data_here)
     data_here.insert(len(data_here.columns), title, [''] * len(data_here))
     if isinstance(comparison,list) and all([isinstance(x,str) for x in comparison]):
         for column in comparison:
@@ -108,25 +76,31 @@ def make_graph(
 
     data_here = preTTT(data_here)
     plt.clf()
-    sns.set_theme(style="darkgrid")
-    data_here[y] = data_here[y]/y_range[3]
-    f, axs = plt.subplots(nrows=1, ncols=1, figsize=(32, 18))
+    #sns.set_theme(style="darkgrid")
+    if log_scale:
+        extra = np.log10
+    else:
+        extra = lambda x:x
 
+    data_here[y] = np.clip(extra(data_here[y].values)/y_range[3],y_range[0],y_range[1])
+
+    f, axs = plt.subplots(nrows=1, ncols=1, figsize=(32, 18))
+    print(data_here)
     a = sns.lineplot(
         data=data_here,
         x=x,
         y=y,
         hue=title,
-        legend=True,
+        # legend=True,
         ax=axs,
-        palette=cmap,
+        # palette=cmap,
 
     )
     plt.yticks(np.arange(y_range[0], y_range[1], step=y_range[2]))
-    sns.move_legend(
-        axs, "lower center",
-        bbox_to_anchor=(0.5, -.13), ncol=3, framealpha=1., fontsize='xx-large'
-    )
+    # sns.move_legend(
+    #     axs, "lower center",
+    #     bbox_to_anchor=(0.5, -.13), ncol=3, framealpha=1., fontsize='xx-large'
+    # )
     a.get_figure().savefig('images/%s.png' % name)
     plt.clf()
     f.clf()
@@ -136,7 +110,7 @@ base_filter = {
     'optimizer':'Adam',
     'grad_batch_size': 1,
     'batch_size': 1024,
-    'length_cutoff_factor':2,
+    'length_cutoff':30,
     'initial_flow':1e-3,
     'loss_base':'Apower',
     'loss_alpha':2,
@@ -172,17 +146,17 @@ graph_filters = [#ordered by difficulty
 reward_filters = [
     {
         'rew_fn': 'TwistedManhattan',
-        'rew_param': str({'width': 1, 'scale': -100, 'exp': False, 'mini': 0.0}),
+        # 'rew_param': str({'width': 1, 'scale': -100, 'exp': False, 'mini': 0}),
         'rew_factor': 1.0
     },
     {
         'rew_fn': 'TwistedManhattan',
-        'rew_param': str({'width': 2, 'scale': -100, 'exp': True, 'mini': 0.0}),
+        'rew_param': str({'width': 2, 'scale': -100, 'exp': True, 'mini': 0}),
         'rew_factor': 1.0
     },
     {
         'rew_fn': 'TwistedManhattan',
-        'rew_param': str({'width': 1, 'scale': -100, 'exp': True, 'mini': 0.0}),
+        'rew_param': str({'width': 1, 'scale': -100, 'exp': True, 'mini': 0}),
         'rew_factor': 1.0
     },
 ]
@@ -192,13 +166,14 @@ FlowEstimator_filter = [
         'flowestimator_opt' : str({
             'options': {
                 'kernel_depth' : 2,
-                'width' : 64,
+                'width' : 32,
                 'final_activation' : 'linear',
             },
             'kernel_options': {
 
                 'kernel_initializer' : 'Orthogonal',
                 'activation': 'tanh',
+                'implementation': 1,
             }
         }),
 
@@ -214,6 +189,7 @@ FlowEstimator_filter = [
             'kernel_options': {
                 'kernel_initializer': 'Orthogonal',
                 'activation': 'tanh',
+                'implementation': 1,
             }
         })
     }
@@ -234,60 +210,320 @@ normalization_filters = {
     },
     'naive' : {
         'normalization_fn' : 4,
-        'normalization_nu_fn' : 2,
+        'normalization_nu_fn' : 0,
     },
     'advanced' : {
-        'normalization_fn' : 4,
-        'normalization_nu_fn' : 3,
+        'normalization_fn' : 5,
+        'normalization_nu_fn' : 0,
+    },
+    'naive_nu': {
+        'normalization_fn': 4,
+        'normalization_nu_fn':2 ,
+    },
+    'advanced_nu': {
+        'normalization_fn': 5,
+        'normalization_nu_fn': 2,
+    },
+    'naive_nup': {
+        'normalization_fn': 4,
+        'normalization_nu_fn':3 ,
+    },
+    'advanced_nup': {
+        'normalization_fn': 5,
+        'normalization_nu_fn': 3,
     }
+
 }
 
 train_filter = {
     'big_short' : {
         'epochs' : 30,
         'step_per_epoch' : 5,
+    },
+    'short': {
+        # 'epochs': 10,
+        'step_per_epoch': 5,
+        'epoch':10
     }
-
 }
 
 
+def groupTTT(epsilon=0.5):
+    def aux(data_here):
+        data_copy = pandas.DataFrame(data_here)
+        data_copy['reg_fn_alpha'] = np.floor(data_copy['reg_fn_alpha'].values/epsilon)*epsilon
+        return data_copy
+    return aux
 
-FILTER_1 = concat_filters([base_filter,graph_filters[-1],reward_filters[2],NoBETA,REG_PROJ[0],REWARD_RESCALE[0]])
-data1 = data_get(FILTER_1,data)
+def groupTTTlog(epsilon=0.5):
+    def aux(data_here):
+        data_copy = pandas.DataFrame(data_here)
+        data_copy['reg_fn_alpha'] =np.floor(data_copy['reg_fn_alpha'].values/epsilon)*epsilon
+        return data_copy
+    return aux
+
+# groupTTT = lambda epsilon: (lambda x:x)
+#
+# print('MAKE GRAPH 1...',end='')
+# FILTER_1 = concat_filters([normalization_filters['baseline'],base_filter,graph_filters[0],NoBETA,REWARD_RESCALE[0],reward_filters[0],train_filter['short']])
+# data1 = data_get(FILTER_1,data)
+# make_graph(
+#     'reg_fn_alpha',
+#     'EMaxSeenRew',
+#     r'\gamma',
+#     'S15G1W1F1_EMaxSeenRew_baseline',
+#     filter=FILTER_1,
+#     # y_range = (0,1,0.05,np.exp(1)),
+#     comparison=['normalization_fn','normalization_nu_fn','reg_fn_gen','reg_proj'],
+#     preTTT=groupTTT(epsilon=0.5)
+# )
+# print('DONE!')
+# print('MAKE GRAPH 1...',end='')
+# FILTER_1 = concat_filters([base_filter,graph_filters[0],NoBETA,REWARD_RESCALE[0],reward_filters[0],train_filter['short']])
+# data1 = data_get(FILTER_1,data)
+# make_graph(
+#     'reg_fn_alpha',
+#     'EMaxSeenRew',
+#     r'\gamma',
+#     'S15G1W1F1_EMaxSeenRew_all',
+#     filter=FILTER_1,
+#     # y_range = (0,1,0.05,np.exp(1)),
+#     comparison=['normalization_fn','normalization_nu_fn','reg_fn_gen','reg_proj'],
+#     preTTT=groupTTT(epsilon=0.5)
+# )
+# print('DONE!')
+# print('MAKE GRAPH 1...',end='')
+# FILTER_1 = concat_filters([normalization_filters['advanced'],base_filter,graph_filters[0],NoBETA,REWARD_RESCALE[0],reward_filters[0],train_filter['short']])
+# data1 = data_get(FILTER_1,data)
+# make_graph(
+#     'reg_fn_alpha',
+#     'EMaxSeenRew',
+#     r'\gamma',
+#     'S15G1W1F1_EMaxSeenRew_advanced',
+#     filter=FILTER_1,
+#     # y_range = (0,1,0.05,np.exp(1)),
+#     comparison=['normalization_fn','normalization_nu_fn','reg_fn_gen','reg_proj'],
+#     preTTT=groupTTT(epsilon=0.5)
+# )
+# print('DONE!')
+#
+# print('MAKE GRAPH 1...',end='')
+# FILTER_1 = concat_filters([normalization_filters['advanced_nu'],base_filter,graph_filters[0],NoBETA,REWARD_RESCALE[0],reward_filters[0],train_filter['short']])
+# data1 = data_get(FILTER_1,data)
+# make_graph(
+#     'reg_fn_alpha',
+#     'EMaxSeenRew',
+#     r'\gamma',
+#     'S15G1W1F1_EMaxSeenRew_advanced_nu',
+#     filter=FILTER_1,
+#     # y_range = (0,1,0.05,np.exp(1)),
+#     comparison=['normalization_fn','normalization_nu_fn','reg_fn_gen','reg_proj'],
+#     preTTT=groupTTT(epsilon=0.5)
+# )
+# print('DONE!')
+#
+# print('MAKE GRAPH 1...',end='')
+# FILTER_1 = concat_filters([normalization_filters['naive'],base_filter,graph_filters[0],NoBETA,REWARD_RESCALE[0],reward_filters[0],train_filter['short']])
+# data1 = data_get(FILTER_1,data)
+# make_graph(
+#     'reg_fn_alpha',
+#     'EMaxSeenRew',
+#     r'\gamma',
+#     'S15G1W1F1_EMaxSeenRew_naive',
+#     filter=FILTER_1,
+#     # y_range = (0,1,0.05,np.exp(1)),
+#     comparison=['normalization_fn','normalization_nu_fn','reg_fn_gen','reg_proj'],
+#     preTTT=groupTTT(epsilon=0.5)
+# )
+# print('DONE!')
+#
+# print('MAKE GRAPH 1...',end='')
+# FILTER_1 = concat_filters([normalization_filters['naive_nu'],base_filter,graph_filters[0],NoBETA,REWARD_RESCALE[0],reward_filters[0],train_filter['short']])
+# data1 = data_get(FILTER_1,data)
+# make_graph(
+#     'reg_fn_alpha',
+#     'EMaxSeenRew',
+#     r'\gamma',
+#     'S15G1W1F1_EMaxSeenRew_naive_nu',
+#     filter=FILTER_1,
+#     # y_range = (0,1,0.05,np.exp(1)),
+#     comparison=['normalization_fn','normalization_nu_fn','reg_fn_gen','reg_proj'],
+#     preTTT=groupTTT(epsilon=0.5)
+# )
+# print('DONE!')
+#
+#
+#
+# print('MAKE GRAPH 2...',end='')
+# FILTER_2 = concat_filters([base_filter,graph_filters[0],NoBETA,REWARD_RESCALE[0],reward_filters[0],train_filter['short']])
+# data2 = data_get(FILTER_2,data)
+# make_graph(
+#     'reg_fn_alpha',
+#     'ExpectedLength',
+#     r'\gamma',
+#     'S15G1W1F1_ExpectedLength',
+#     filter=FILTER_2,
+#     comparison=['normalization_fn','normalization_nu_fn','reg_fn_gen','reg_proj'],
+#     preTTT=groupTTT(epsilon=0.3),
+#     y_range = (0,30,5,1.)
+# )
+# print('DONE!')
+# print('MAKE GRAPH 3...',end='')
+# FILTER_3 = concat_filters([base_filter,graph_filters[0],NoBETA,REWARD_RESCALE[0],reward_filters[0],train_filter['short']])
+# data3 = data_get(FILTER_3,data)
+# make_graph(
+#     'reg_fn_alpha',
+#     'FlowSize',
+#     r'\gamma',
+#     'S15G1W1F1_FlowSize',
+#     filter=FILTER_3,
+#     comparison=['normalization_fn','normalization_nu_fn','reg_fn_gen','reg_proj'],
+#     y_range = (-4,2,0.5,1),
+#     preTTT=groupTTT(epsilon=0.3),
+#     log_scale=True
+# )
+# print('DONE!')
+# # print('MAKE GRAPH 2/...',end='')
+
+
+print('MAKE GRAPH 4...',end='')
+FILTER_4 = concat_filters([base_filter,graph_filters[1],NoBETA,REWARD_RESCALE[0],reward_filters[0],train_filter['short']])
+data1 = data_get(FILTER_4,data)
 make_graph(
     'reg_fn_alpha',
     'EMaxSeenRew',
     r'\gamma',
-    'S15G3W1F1_AddReg',
-    filter=FILTER_1,
-    y_range = (0,1,0.05,np.exp(1)),
-    comparison=['normalization_fn','normalization_nu_fn','reg_fn_gen']
-)
-
-FILTER_2 = concat_filters([base_filter,graph_filters[1],reward_filters[1],NoBETA,REG_PROJ[0],REWARD_RESCALE[0],train_filter['big_short']])
-data2 = data_get(FILTER_2,data)
-make_graph(
-    'reg_fn_alpha',
-    'EMaxSeenRew',
-    r'\gamma',
-    'S15G2W2F1_AddReg',
-    filter=FILTER_2,
+    'S15G2W1F1_EMaxSeenRew',
+    filter=FILTER_4,
+    # y_range = (0,1,0.05,np.exp(1)),
     comparison=['normalization_fn','normalization_nu_fn','reg_fn_gen','reg_proj'],
-    y_range = (0,1,0.05,2*np.exp(2))
+    # preTTT=groupTTT(epsilon=0.5)
 )
+print('DONE!')
+print('MAKE GRAPH 5...',end='')
+FILTER_5 = concat_filters([base_filter,graph_filters[1],NoBETA,REWARD_RESCALE[0],reward_filters[0],train_filter['short']])
+# data2 = data_get(FILTER_2,data)
+make_graph(
+    'reg_fn_alpha',
+    'ExpectedLength',
+    r'\gamma',
+    'S15G2W1F1_ExpectedLength',
+    filter=FILTER_5,
+    comparison=['normalization_fn','normalization_nu_fn','reg_fn_gen','reg_proj'],
+    preTTT=groupTTT(epsilon=0.3),
+    y_range = (0,30,5,1.)
+)
+print('DONE!')
+print('MAKE GRAPH 6...',end='')
+FILTER_6 = concat_filters([base_filter,graph_filters[1],NoBETA,REWARD_RESCALE[0],reward_filters[0],train_filter['short']])
+# data3 = data_get(FILTER_3,data)
+make_graph(
+    'reg_fn_alpha',
+    'FlowSize',
+    r'\gamma',
+    'S15G2W1F1_FlowSize',
+    filter=FILTER_6,
+    comparison=['normalization_fn','normalization_nu_fn','reg_fn_gen','reg_proj'],
+    y_range = (0,5,1,1),
+    preTTT=groupTTT(epsilon=0.3)
+)
+print('DONE!')
 
-FILTER_3 = concat_filters([base_filter,graph_filters[1],reward_filters[1],NoBETA,REWARD_RESCALE[0],REG_PROJ[1],train_filter['big_short']])
-data3 = data_get(FILTER_3,data)
+print('MAKE GRAPH 4...',end='')
+FILTER_4 = concat_filters([normalization_filters['baseline'],base_filter,graph_filters[2],NoBETA,REWARD_RESCALE[0],reward_filters[0],train_filter['short']])
+data1 = data_get(FILTER_4,data)
 make_graph(
     'reg_fn_alpha',
     'EMaxSeenRew',
     r'\gamma',
-    'S15G2W2F1_OrthREg',
-    filter=FILTER_3,
+    'S15G3W1F1_EMaxSeenRew_1',
+    filter=FILTER_4,
+    # y_range = (0,1,0.05,np.exp(1)),
     comparison=['normalization_fn','normalization_nu_fn','reg_fn_gen','reg_proj'],
-    y_range = (0,1,0.05,2*np.exp(2))
+    preTTT=groupTTT(epsilon=0.3)
+)
+print('MAKE GRAPH 4...',end='')
+FILTER_4 = concat_filters([normalization_filters['naive_nu'],base_filter,graph_filters[2],NoBETA,REWARD_RESCALE[0],reward_filters[0],train_filter['short']])
+data1 = data_get(FILTER_4,data)
+make_graph(
+    'reg_fn_alpha',
+    'EMaxSeenRew',
+    r'\gamma',
+    'S15G3W1F1_EMaxSeenRew_2',
+    filter=FILTER_4,
+    # y_range = (0,1,0.05,np.exp(1)),
+    comparison=['normalization_fn','normalization_nu_fn','reg_fn_gen','reg_proj'],
+    preTTT=groupTTT(epsilon=0.3)
+)
+print('MAKE GRAPH 4...',end='')
+FILTER_4 = concat_filters([normalization_filters['naive_nup'],base_filter,graph_filters[2],NoBETA,REWARD_RESCALE[0],reward_filters[0],train_filter['short']])
+data1 = data_get(FILTER_4,data)
+make_graph(
+    'reg_fn_alpha',
+    'EMaxSeenRew',
+    r'\gamma',
+    'S15G3W1F1_EMaxSeenRew_3',
+    filter=FILTER_4,
+    # y_range = (0,1,0.05,np.exp(1)),
+    comparison=['normalization_fn','normalization_nu_fn','reg_fn_gen','reg_proj'],
+    preTTT=groupTTT(epsilon=0.3)
+)
+print('MAKE GRAPH 4...',end='')
+FILTER_4 = concat_filters([normalization_filters['advanced_nu'],base_filter,graph_filters[2],NoBETA,REWARD_RESCALE[0],reward_filters[0],train_filter['short']])
+data1 = data_get(FILTER_4,data)
+make_graph(
+    'reg_fn_alpha',
+    'EMaxSeenRew',
+    r'\gamma',
+    'S15G3W1F1_EMaxSeenRew_4',
+    filter=FILTER_4,
+    # y_range = (0,1,0.05,np.exp(1)),
+    comparison=['normalization_fn','normalization_nu_fn','reg_fn_gen','reg_proj'],
+    preTTT=groupTTT(epsilon=0.3)
+)
+print('MAKE GRAPH 4...',end='')
+FILTER_4 = concat_filters([normalization_filters['advanced_nup'],base_filter,graph_filters[2],NoBETA,REWARD_RESCALE[0],reward_filters[0],train_filter['short']])
+data1 = data_get(FILTER_4,data)
+make_graph(
+    'reg_fn_alpha',
+    'EMaxSeenRew',
+    r'\gamma',
+    'S15G3W1F1_EMaxSeenRew_5',
+    filter=FILTER_4,
+    # y_range = (0,1,0.05,np.exp(1)),
+    comparison=['normalization_fn','normalization_nu_fn','reg_fn_gen','reg_proj'],
+    preTTT=groupTTT(epsilon=0.3)
 )
 
+print('DONE!')
+print('MAKE GRAPH 5...',end='')
+FILTER_5 = concat_filters([base_filter,graph_filters[2],NoBETA,REWARD_RESCALE[0],reward_filters[0],train_filter['short']])
+# data2 = data_get(FILTER_2,data)
+make_graph(
+    'reg_fn_alpha',
+    'ExpectedLength',
+    r'\gamma',
+    'S15G3W1F1_ExpectedLength',
+    filter=FILTER_5,
+    comparison=['normalization_fn','normalization_nu_fn','reg_fn_gen','reg_proj'],
+    preTTT=groupTTT(epsilon=0.3),
+    y_range = (0,30,5,1.)
+)
+print('DONE!')
+print('MAKE GRAPH 6...',end='')
+FILTER_6 = concat_filters([base_filter,graph_filters[2],NoBETA,REWARD_RESCALE[0],reward_filters[0],train_filter['short']])
+# data3 = data_get(FILTER_3,data)
+make_graph(
+    'reg_fn_alpha',
+    'FlowSize',
+    r'\gamma',
+    'S15G3W1F1_FlowSize',
+    filter=FILTER_6,
+    comparison=['normalization_fn','normalization_nu_fn','reg_fn_gen','reg_proj'],
+    y_range = (0,5,1,1),
+    preTTT=groupTTT(epsilon=0.3)
+)
+print('DONE!')
 
 raise
 

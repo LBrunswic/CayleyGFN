@@ -141,75 +141,7 @@ def CNNmulti_gen(nflow, ndirections, kernel_depth=2, width=64, embedding_dim=Non
     flow_kernel = tf.keras.models.Sequential(layers)
     return multi_softmax_head(flow_kernel)
 
-
-def EinSummulti_gen(nflow, ndirections, kernel_depth=2, width=64, embedding_dim=None, final_activation=tf.math.abs, kernel_options=None):
-    if kernel_options is None:
-        kernel_options = {}
-    nout = ndirections+1
-    shape = (None, None, embedding_dim, nflow)
-    widths = [width]*kernel_depth
-    # print(widths)
-    layers = [tf.keras.layers.Input(shape=shape)]
-    for out_dim in widths:
-        layers.append(
-            tf.keras.layers.EinsumDense('...ec,oec->...oc', output_shape=(out_dim, nflow),bias_axes='oc')
-        )
-    layers.append(
-        tf.keras.layers.EinsumDense('...ec,oec->...oc', output_shape=(nout, nflow),bias_axes='oc')
-    )
-    flow_kernel = tf.keras.models.Sequential(layers)
-    return multi_softmax_head(flow_kernel)
-
-def EinSummultiv2_gen(nflow, ndirections, kernel_depth=2, width=64, embedding_dim=None, final_activation=tf.math.abs, kernel_options=None):
-    if kernel_options is None:
-        kernel_options = {}
-    nout = ndirections+1
-    shape = (None, None, embedding_dim, nflow)
-    widths = [width]*kernel_depth
-    # print(widths)
-    layers = [tf.keras.layers.Input(shape=shape)]
-    for out_dim in widths:
-        layers.append(
-            tf.keras.layers.EinsumDense('uwec,oec->uwoc', output_shape=(None,None,out_dim, nflow),bias_axes='oc')
-        )
-    layers.append(
-        tf.keras.layers.EinsumDense('uwec,oec->uwoc', output_shape=(None,None,nout, nflow),bias_axes='oc')
-    )
-    flow_kernel = tf.keras.models.Sequential(layers)
-    return multi_softmax_head(flow_kernel)
-
-class MultiDense(tf.keras.layers.Layer):
-    def __init__(self, nsplit, out):
-        super(MultiDense, self).__init__()
-        self.nsplit = nsplit
-        self.out = out
-    def build(self, input_shape):
-        n = len(input_shape)
-        self.A = tf.Variable(tf.zeros((*([1]*(n-2)), input_shape[-2], self.out, input_shape[-1])))
-        self.B = tf.Variable(tf.zeros((*([1]*(n-2)), self.out, input_shape[-1])))
-    @tf.function
-    def call(self, inputs):
-        return tf.reduce_sum(tf.expand_dims(inputs,-2) * self.A, axis=3) + self.B
-
-def DenseMultiDirect_gen(nflow, ndirections, kernel_depth=2, width=64, embedding_dim=None, final_activation=tf.math.abs, kernel_options=None):
-    if kernel_options is None:
-        kernel_options = {}
-    nout = ndirections+1
-    shape = (None, None, embedding_dim, nflow)
-    widths = [width]*kernel_depth
-    layers = [tf.keras.layers.Input(shape=shape)]
-    for out_dim in widths:
-        layers.append(
-            MultiDense(nflow,out_dim)
-        )
-    layers.append(
-            MultiDense(nflow,nout)
-        )
-    flow_kernel = tf.keras.models.Sequential(layers)
-    return multi_softmax_head(tf.keras.layers.TimeDistributed(flow_kernel))
-
-
-def CNNmultisplit_gen(nflow, ndirections, kernel_depth=2, width=64, embedding_dim=None, final_activation=tf.math.abs, kernel_options=None):
+def CNNmultisplit_gen(nflow, ndirections, kernel_depth=2, width=64, embedding_dim=None, final_activation='linear', kernel_options=None):
     if kernel_options is None:
         kernel_options = {}
     nout = ndirections+1
@@ -272,7 +204,7 @@ def LocallyConnectedmulti_gen(nflow, ndirections, kernel_depth=2, width=64, embe
             tf.keras.layers.LocallyConnected1D(
                 width ,
                 1,
-                **kernel_options
+                **kernel_options,
             )
         )
     layers.append(

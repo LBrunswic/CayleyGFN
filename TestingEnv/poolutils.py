@@ -24,14 +24,14 @@ def initialize(hardware_parameters,BASE_LOGS_FOLDER):
     gpu_memory_limit = hardware_parameters['GPU_MEMORY']//hardware_parameters['GPU_WORKER']
     # CONFIGURE TENSORFLOW
     import tensorflow as tf
-    if worker <= hardware_parameters['GPU_WORKER']:
-        GPU = 0
-        gpus = tf.config.list_physical_devices('GPU')
-        tf.config.set_logical_device_configuration(
-            tf.config.list_physical_devices('GPU')[0],
-            [tf.config.LogicalDeviceConfiguration(memory_limit=gpu_memory_limit)])
-    else:
-        tf.config.set_visible_devices([], 'GPU')
+    # if worker <= hardware_parameters['GPU_WORKER']:
+    GPU = 0
+    gpus = tf.config.list_physical_devices('GPU')
+    tf.config.set_logical_device_configuration(
+        tf.config.list_physical_devices('GPU')[0],
+        [tf.config.LogicalDeviceConfiguration(memory_limit=gpu_memory_limit)])
+    # else:
+        # tf.config.set_visible_devices([], 'GPU')
 
     logger.info('Tensorflow configuration done!')
 

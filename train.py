@@ -108,8 +108,8 @@ def train_test_model(hparams,logger):
         optimizer=optimizers[hparams['optimizer']](hparams['learning_rate']),
         loss=loss_fn,
     )
-    log_dict(logger,flow.trainable_variables,name='flow trainable')
-    log_dict(logger,flow.non_trainable_variables,name='flow non trainable')
+    log_tensorlist(logger,flow.trainable_variables,name='flow trainable')
+    log_tensorlist(logger,flow.non_trainable_variables,name='flow non trainable')
     TOTAL_EPOCH = hparams['epochs']*len(alpha_range)
     flow.fit(
         np.zeros(hparams['step_per_epoch']),
@@ -118,11 +118,13 @@ def train_test_model(hparams,logger):
         batch_size=1,
         callbacks=[
             pandas_record,
-            tf.keras.callbacks.TerminateOnNaN(),
+            # tf.keras.callbacks.TerminateOnNaN(),
             Replay,
-            tf.keras.callbacks.TensorBoard(log_dir=hparams['logdir'],
-                                           # histogram_freq = 1, profile_batch = (1,1000)
-                                           ),
+            # tf.keras.callbacks.TensorBoard(log_dir=hparams['profile_logdir'],
+                                           # histogram_freq = 1,
+                                           # profile_batch = (2,200),
+                                           # write_steps_per_second=True,
+                                           # ),
             callback_alpha_tune,
         ]
     )

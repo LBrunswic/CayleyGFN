@@ -54,6 +54,10 @@ def TwistedManhattan(size,*arg,width=1,scale=-100,factor=1.,dtype= tf.float32,de
     return R
 
 
+def Affinity(size,*args,alpha=lambda i,j : tf.nn.relu(j-i), **kwargs):
+    pass
+
+
 class balance_add(tf.keras.Model):
     def __init__(self):
         super(balance_add, self).__init__()
@@ -73,7 +77,8 @@ def schedule_add(epoch=0):
 
 reward_map = {
     'R_zero' : R_zero,
-    'TwistedManhattan': TwistedManhattan
+    'TwistedManhattan': TwistedManhattan,
+    'Affinity' : Affinity,
 }
 
 class Reward():

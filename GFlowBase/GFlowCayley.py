@@ -83,17 +83,17 @@ class MultiGFlowCayleyLinear(tf.keras.Model):
         self.batch_size = batch_size
         self.reg_post=reg_post
         self.reg_fn = reg_fn
-        self.initialized = False
         self.initial_kernel = []
 
     def initialize(self):
-        if not self.initialized:
-            self(0)
-            self.initialized = True
-            self.initial_kernel = [copy(var.numpy()) for var in self.trainable_variables]
-        else:
-            for i,var in enumerate(self.trainable_variables):
-                var.assign(self.initial_kernel[i])
+        self(0)
+        self.initialized = True
+        self.initial_kernel = [copy(var.numpy()) for var in self.trainable_variables]
+
+    @tf.function
+    def reinitialize(self):
+        for i,var in enumerate(self.trainable_variables):
+            var.assign(self.initial_kernel[i])
 
     def build(self,input_shape):
         self.id_action = tf.constant(
@@ -148,8 +148,6 @@ class MultiGFlowCayleyLinear(tf.keras.Model):
         res = self.FlowCompute(forward_edges, backward_edges, path_init_flow, paths_reward)
         self.n_train = len(self.trainable_variables)
         return res
-    def update_paths_embedding(self):
-        self.paths.assign(self.graph.embedding(self.paths_true),axis=-2)
     def rotate_paths(self):
         self.paths_true.assign(tf.roll(self.paths_true,shift=1,axis=0))
         self.paths.assign(tf.roll(self.paths,shift=1,axis=0))
@@ -160,7 +158,7 @@ class MultiGFlowCayleyLinear(tf.keras.Model):
         self.paths_reward.assign(self.reward(self.paths_true[0], axis=-2))
     # @tf.function
     def FlowCompute(self,forward_edges,backward_edges, path_init_flow,paths_reward):
-        f_out = tf.reduce_sum(self.FlowEstimator(forward_edges[:, :, 0:1])[:,:,0,:,:],axis=-2)
+        f_out = tf.reduce_sum(self.FlowEstimator(backward_edges[:, :, 0:1])[:,:,0,:,:],axis=-2)
         R = paths_reward/self.reward_rescale
         f_init = path_init_flow * self.initflow_estimate() * self.reward_rescale
         f_in = tf.reduce_sum(
@@ -184,7 +182,7 @@ class MultiGFlowCayleyLinear(tf.keras.Model):
     # @tf.function
     def update_edges(self):
         # self.forward_edges.assign(self.graph.embedding(tf.einsum('aij,btjc->btaic', self.id_action, self.paths_true[0]),axis=-2))
-        self.backward_edges.assign(self.graph.embedding(tf.einsum('aij,btjc->btaic', self.id_action_inverse, self.paths_true[0]),axis=-2))
+        self.backward_edges.assign(self.graph.embedding_fn(tf.einsum('aij,btjc->btaic', self.id_action_inverse, self.paths_true[0]),axis=-2))
     # @tf.function
     def update_init_flow(self):
         self.path_init_flow.assign(self.graph.density(self.paths_true[0], axis=-2))
@@ -193,8 +191,7 @@ class MultiGFlowCayleyLinear(tf.keras.Model):
         self.paths.assign(self.graph.embedding(self.paths_true, axis=-2))
 
     # @tf.function
-    def update_training_distribution(self):
-        alpha = (0.9, 0.1)
+    def update_training_distribution_gflow(self):
         self.update_reward()
         self.update_edges()
 
@@ -239,7 +236,7 @@ class MultiGFlowCayleyLinear(tf.keras.Model):
         with tf.GradientTape(persistent=True) as tape:
             Flownu = self.FlowCompute(*paths)
             reg = self.reg_fn(Flownu)
-            loss = self.compiled_loss(Flownu,self.initflow_estimate())
+            loss = self.compiled_loss(Flownu, self.initflow_estimate())
         trainable_vars = self.trainable_variables
         # gradients = tape.jacobian(loss, trainable_vars)
         s = 1.

@@ -111,12 +111,19 @@ class MeanABError(tf.keras.losses.Loss):
         cutoff = 1.
 
         normalization = tf.stop_gradient(self.normalization_fn(Flownu,finit))
-        normalization = 1.
         normalization_nu = tf.stop_gradient(self.normalization_nu_fn(Flownu,finit))
-        normalization_nu = 1.
         density_fixed = tf.stop_gradient(tf.math.exp(logdensity_trainable)*normalization_nu)
 
-        Ldelta = tf.reduce_sum(tf.reduce_mean(tf.reduce_sum(cutoff*density_fixed*self.A((Foutstar+R-Finstar-Finit)/normalization)*self.B(Finstar/normalization, Foutstar/normalization),axis=1),axis=0),-1)
+        Ldelta = tf.reduce_sum(
+            tf.reduce_mean(
+                tf.reduce_sum(
+                    cutoff
+                    * density_fixed
+                    * self.A((Foutstar+R-Finstar-Finit)/normalization)
+                    * self.B(Finstar/normalization, Foutstar/normalization),
+                axis=1),
+            axis=0)
+        )
         return Ldelta
 
 

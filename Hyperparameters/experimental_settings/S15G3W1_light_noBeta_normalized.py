@@ -37,7 +37,7 @@ reward_param = {
 
 FIXED_HYPERPARAMETERS = {
     'graph_size': [15],
-    'graph_generators': ['trans_cycle_a', 'cycles_a', 'transpositions'][:1],
+    'graph_generators': ['trans_cycle_a', 'cycles_a', 'transpositions'][2:3],
     'inverse': [True],
     'initial_pos': ['SymmetricUniform'],
     'rew_fn':['TwistedManhattan'],
@@ -68,14 +68,14 @@ FIXED_HYPERPARAMETERS = {
     'loss_cutoff':['none'],
     'lr_schedule':['none'],
     'reg_fn_alpha_schedule':['none'],
-    'normalization_fn': [5],
-    'normalization_nu_fn': [0],
+    'normalization_fn': [4,5],
+    'normalization_nu_fn': [2,3],
     'group_dtype': ['float32']
 }
 
 
 TUNING_HYPERPARAMETERS = {
-    'reg_fn_alpha': [(-20,20)]
+    'reg_fn_alpha': [(-20,40)]
 }
 
 HARDWARE_PARAMETERS = {
@@ -87,8 +87,8 @@ HARDWARE_PARAMETERS = {
 }
 
 DENSITY_PARAMETERS = {
-    'SEED_REPEAT': [4],
-    'N_SAMPLE': [400]
+    'SEED_REPEAT': [8],
+    'N_SAMPLE': [600]
 }
 
 

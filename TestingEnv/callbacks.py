@@ -18,13 +18,11 @@ class PandasRecord(tf.keras.callbacks.Callback):
         # print(epoch)
         res = self.model.evaluate()
         episode = epoch//self.epoch_period
-        true_epoch = epoch % self.epoch_period
+        true_epoch = 1+epoch % self.epoch_period
         res.update({key: [self.hparams[key]]*self.nflow for key in self.hparams if key != 'reg_fn_alpha'})
         res.update({'epoch': [true_epoch]*self.nflow})
         res.update({'reg_fn_alpha': self.alpha_range[episode]})
         res.update({'episode': [episode]*self.nflow })
-        # for x in res:
-        #     print(x,len(res[x]))
         res = pandas.DataFrame(res)
 
         if self.results is None:
@@ -50,34 +48,39 @@ class ReplayBuffer(tf.keras.callbacks.Callback):
     def on_epoch_begin(self, epoch, logs=None):
 
         def schedule(epoch):
-            if epoch==0:
+            if epoch%self.epochs == 0:
                 return (0., 1.)
+            elif epoch%self.epochs < 6:
+                return (0.90, 0.1)
             else:
                 return (0.99, 0.01)
-        T = time()
-        self.update_training_distribution()
-        self.model.update_training_distribution()
+        self.update_training_distribution_callback()
         self.model.update_flow_init(schedule(epoch))
 
     @tf.function
-    def update_training_distribution(self):
-        initial = self.model.graph.sample(shape=(self.model.grad_batch_size, self.model.batch_size, self.model.ncopy), axis=-2)
+    def update_training_distribution_callback_aux(self, initial):
+        print('RECOMPILE UPDATE',initial.shape)
         for j in tf.range(self.model.grad_batch_size):
-            seeded_uniform = tf.random.uniform(shape=(self.model.batch_size, self.model.path_length-1, self.model.ncopy),dtype='float16')
-            true_paths, embedded_paths = self.gen_path_model(tf.concat([seeded_uniform,tf.cast(initial[j],'float16')],axis=1))
+            seeded_uniform = tf.random.uniform(
+                shape=(self.model.batch_size, self.model.path_length - 1, self.model.ncopy), dtype='float32')
+            true_paths, embedded_paths = self.gen_path_model(
+                tf.concat([seeded_uniform, tf.cast(initial[j], 'float32')], axis=1))
             self.model.paths_true[j].assign(true_paths)
             self.model.paths[j].assign(embedded_paths)
-        self.model.update_training_distribution()
+            self.model.update_training_distribution_gflow()
+
+    def update_training_distribution_callback(self):
+        initial = self.model.graph.sample(shape=(self.model.grad_batch_size, self.model.batch_size, self.model.ncopy), axis=-2)
+        self.update_training_distribution_callback_aux(initial)
+
 
 
     def compile_update_training_distribution(self):
-        self.embedding_layer = tf.keras.layers.Lambda(
-            lambda x: self.permute(self.model.graph.embedding_fn(self.permute(x))),
-            output_shape=(self.model.embedding_dim, self.model.ncopy),
-            name='Embedding'
-        )
-        # tf.broadcast_to(self.graph.actions, (self.batch_size, *self.graph.actions.shape))
+        print('COMPILE update train dist')
+        self.permute = tf.keras.layers.Permute((2, 1))
 
+        # self.embedding_layer = tf.keras.layers.Lambda(lambda x:self.model.graph.embedding_fn(x,axis=-2))
+        self.embedding_layer = self.model.graph.embedding_fn
         self.Categorical = lambda F_r: tf.gather(
             self.model.graph.actions,
             tf.argmin(
@@ -93,7 +96,7 @@ class ReplayBuffer(tf.keras.callbacks.Callback):
             tf.keras.layers.Lambda(lambda x: x[:, 0, 0], name='Squeeze')
         ])
 
-        self.permute = tf.keras.layers.Permute((2, 1))
+
 
         self.apply_action = tf.keras.layers.Lambda(
             lambda gathered, pos: tf.linalg.matvec(gathered, pos, name='ApplyAction'))
@@ -127,14 +130,10 @@ class fn_alpha_tune_grid(tf.keras.callbacks.Callback):
         self.metrics = []
         self.seed = seed
     def on_epoch_begin(self, epoch, logs=None):
-        if epoch % self.epoch_per_train == 1:
+        if epoch % self.epoch_per_train == 0:
             self.current_experiments += 1
-            self.model.initialize()
-            tf.random.set_seed(self.seed)
-        self.model.reg_fn.alpha.assign(self.alpha_range[self.current_experiments])
-    # def on_epoch_end(self, epoch, logs=None):
-    #     print('fn_alpha_tune_grid',self.model.evaluate()['EMaxSeenRew'])
-
+            self.model.reinitialize()
+            self.model.reg_fn.alpha.assign(self.alpha_range[self.current_experiments])
 
 class FlowSizeStop(tf.keras.callbacks.Callback):
     def __init__(self, monitor="FlowSize", min_val=5*1e-1,max_val=1e4):

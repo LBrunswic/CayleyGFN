@@ -64,10 +64,8 @@ class CayleyGraphLinearEmb():
     def density(self, state_batch, axis=-1):
         return self.random_gen.density(state_batch, axis=axis)
 
-    def embedding(self,state_batch,axis=-1):
-        state_batch_swap = tf.experimental.numpy.swapaxes(state_batch, -1, axis)
-        res_swap = self.embedding_fn(state_batch_swap)
-        return tf.experimental.numpy.swapaxes(res_swap, -1, axis)
+    def embedding(self,state_batch,axis=-2):
+        return self.embedding_fn(state_batch,axis=axis)
 
     def __str__(self):
         return self.name
@@ -111,13 +109,6 @@ def hotalpha(n,*args,omega=1,dtype=D_TYPE,**kwarg):
         return tf.cast(tf.reshape(tf.gather(Id,paths),(*paths.shape[:-1], n*n,) ),dtype)
     return aux,n*n
 
-Embeddings = {
-    'natural': lambda n,*args,dtype=D_TYPE,**kwarg: (lambda x: tf.cast(x,dtype)/tf.cast(n,dtype),n),
-    'cos': lambda n,*args,omega=1,dtype=D_TYPE,**kwarg: (lambda x: tf.math.cos(2*omega*pi*tf.cast(x,dtype)/n),n),
-    'sin': lambda n,*args,omega=1,dtype=D_TYPE,**kwarg: (lambda x: tf.math.sin(2*omega*pi*tf.cast(x,dtype)/n),n),
-    'hot': hot,
-    'hotalpha': hotalpha
-}
 
 def Symmetric(
     n,
@@ -151,9 +142,49 @@ def Symmetric(
 
     E_list = [Embeddings[emb_choice](n,**emb_kwarg) for emb_choice,emb_kwarg in embedding]
     embedding_dim = sum([d for _,d in E_list])
-    @tf.function
-    def iota(x):
-         return tf.concat([emb(x) for emb,_  in E_list],axis=-1)
+
+    iota = Embedding([emb for emb,_ in E_list])
+
+    # @tf.function
+    # def iota(x,axis=-2):
+    #      return tf.concat([emb(x,axis=-2) for emb,_  in E_list],axis=-2)
+    # inputs = tf.keras.layers.Input(shape=(None,n,))
+    # outputs = tf.keras.layers.Concatenate()([emb(inputs) for emb, _ in E_list])
+    # iota = tf.keras.Model(inputs=inputs,outputs=outputs)
 
     return CayleyGraphLinearEmb(direct_actions, inverse_actions, diameter, generators=generators,rep_list=R_list,random_gen=random_gen,embedding=iota,embedding_dim=embedding_dim, group_dim=n, name='Sym%s_%s' % (n,generators.numpy()),group_dtype=group_dtype,representation_dtype=D_TYPE)
 
+
+class Embedding(tf.keras.layers.Layer):
+    def __init__(self,embedding_list,**kwargs):
+        super(Embedding, self).__init__(**kwargs)
+        self.embedding_list = embedding_list
+        self.cases = {}
+
+    def build(self, input_shape):
+        pass
+
+    def build_fn(self, input_shape, axis):
+        print(self.embedding_list)
+        inputs = tf.keras.Input(shape=input_shape[1:])
+        concat = tf.keras.layers.Concatenate(axis=-2)
+        embeddings = [emb_fn(inputs, axis=axis) for emb_fn in self.embedding_list]
+        outputs = concat(embeddings)
+        return tf.keras.models.Model(inputs=inputs, outputs=outputs)
+
+
+
+    @tf.function
+    def call(self, inputs, axis=-2):
+        if len(inputs.shape) not in self.cases:
+            self.cases.update({len(inputs.shape) : self.build_fn(inputs.shape,axis)})
+        return  self.cases[len(inputs.shape)](inputs)
+
+
+Embeddings = {
+    'natural': lambda n,*args,dtype=D_TYPE,**kwarg: (lambda x,axis: tf.cast(x,dtype)/tf.cast(n,dtype),n),
+    'cos': lambda n,*args,omega=1,dtype=D_TYPE,**kwarg: (lambda x, axis: tf.math.cos(2*omega*pi*tf.cast(x,dtype)/n),n),
+    'sin': lambda n,*args,omega=1,dtype=D_TYPE,**kwarg: (lambda x, axis: tf.math.sin(2*omega*pi*tf.cast(x,dtype)/n),n),
+    'hot': hot,
+    'hotalpha': hotalpha
+}

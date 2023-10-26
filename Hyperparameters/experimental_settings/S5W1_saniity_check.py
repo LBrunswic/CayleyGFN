@@ -48,7 +48,7 @@ FIXED_HYPERPARAMETERS = {
     'heuristic_fn':['R_zero'],
     'heuristic_param':[{}],
     'heuristic_factor':[0.],
-    'reward_rescale':['Trivial'],
+    'reward_rescale':['Trivial','ERew'],
     'reg_fn_gen':['norm2','LogPathLen'],
     'loss_cutoff':['none'],
     'lr_schedule':['none'],

@@ -1,12 +1,19 @@
+# import os
+# os.environ["OMP_NUM_THREADS"] = "8"
+
 import itertools
 import multiprocessing
-import os
+
 import re
 import numpy as np
 from tensorboard.plugins.hparams import api as hp
-from time import time
 import datetime
-LOG = 'test2.log'
+import sys
+try:
+    extra = sys.argv[1]
+except:
+    extra = ''
+LOG = 'test%s.log' % extra
 try:
     with open(LOG,'r') as f:
         A = ''.join(f.readlines())
@@ -19,19 +26,19 @@ with open(LOG,'w') as f:
     f.write('START\n')
 
 seq_param = 0 # int(sys.argv[1])
-seed_repeat = 2
+seed_repeat = 6
 # POOL_SIZE =
 #int(sys.argv[2])
 TEST = True
 TEST = False
 THRESHOLD_IMPLOSIOM = 10
 THRESHOLD_MAX = 0.4
-N_SAMPLE = 2
+N_SAMPLE = 10
 
-series_name = 'W1_lightE_test'
+series_name = 'W1_lightE_test%s' % extra
 
-POOL_SIZE = 1
-THREAD_SIZE = 1
+POOL_SIZE = 6
+THREAD_SIZE = 2
 MAX_GPU_WORKER = 2
 
 
@@ -42,9 +49,9 @@ MAX_GPU_WORKER = 2
 ## __graph__
 SIZE = 15
 GENERATORS = [
-    # 'trans_cycle_a',
+    'trans_cycle_a',
     # 'cycles_a',
-    'transpositions'
+    # 'transpositions'
 ]
 INITIAL_POSITION = 'SymmetricUniform'
 INVERSE = True
@@ -170,35 +177,42 @@ HP_name = [x.name for x in HP]
 
 def initialize():
 
-    import tensorflow as tf
     try:
         worker = int(multiprocessing.current_process().name.split('-')[1])
     except:
         worker = 0
+    import tensorflow as tf
+    tf.config.experimental.enable_mlir_bridge()
+
+    tf.config.threading.set_inter_op_parallelism_threads(0)
+    tf.config.threading.set_intra_op_parallelism_threads(24)
+
+
+
     if worker <= MAX_GPU_WORKER:
         GPU = 0
         gpus = tf.config.list_physical_devices('GPU')
         # print(gpus)
-        tf.config.set_visible_devices(gpus[GPU], 'GPU')
-        tf.config.experimental.set_memory_growth(gpus[GPU], True)
-        # tf.config.threading.set_inter_op_parallelism_threads(16)
+        # tf.config.set_visible_devices(gpus[GPU], 'GPU')
+        # tf.config.experimental.set_memory_growth(gpus[GPU], True)
+        tf.config.set_logical_device_configuration(
+            tf.config.list_physical_devices('GPU')[0],
+            [tf.config.LogicalDeviceConfiguration(memory_limit=16300/min(THREAD_SIZE,MAX_GPU_WORKER))])
+            # tf.config.threading.set_inter_op_parallelism_threads(16)
         # tf.config.threading.set_intra_op_parallelism_threads(128)
         logical_gpus = tf.config.list_logical_devices('GPU')
             # print('done!', logical_gpus)
     else:
         tf.config.set_visible_devices([], 'GPU')
-        # tf.config.threading.set_inter_op_parallelism_threads(2)
-        # tf.config.threading.set_inter_op_parallelism_threads(8)
 
-    print(multiprocessing.current_process().name + 'THREAD INTER:',tf.config.threading.get_inter_op_parallelism_threads())
-    print(multiprocessing.current_process().name + 'THREAD INTRA:',tf.config.threading.get_intra_op_parallelism_threads())
+    # print(multiprocessing.current_process().name + 'THREAD INTER:',tf.config.threading.get_inter_op_parallelism_threads())
+    # print(multiprocessing.current_process().name + 'THREAD INTRA:',tf.config.threading.get_intra_op_parallelism_threads())
 
     # tf.config.experimental.enable_op_determinism()
-    import sys
 
     # sys.stdout = open(str(worker) + ".log", "w")
 
-    from metrics import ExpectedLen, ExpectedMaxSeenReward, MaxSeenReward, ExpectedReward, FlowSize, RandomCheck,PathLeak
+    from TestingEnv.metrics import ExpectedLen, ExpectedMaxSeenReward, MaxSeenReward, ExpectedReward, FlowSize, RandomCheck,PathLeak
 
     Metrics = [
         ExpectedReward,
@@ -220,14 +234,15 @@ def initialize():
 
 
 def run_wrapper(hparams):
+    import os
     T = time()
     worker = int(multiprocessing.current_process().name.split('-')[1])
 
     run_name = "run%s_" % worker + series_name + "-%d" % time()
-    from train import train_test_model
-    import tensorflow as tf
     run_dir = os.path.join(log_dir, run_name)
     # print(hparams)
+    print('hparams =',hparams)
+    raise
     vals = train_test_model(hparams, log_dir=run_dir,test=TEST)
     if TEST:
         return vals
@@ -242,7 +257,7 @@ def run_wrapper(hparams):
                     continue
                 tf.summary.scalar(name, vals[name][flow], step=1)
 
-    tf.keras.backend.clear_session()
+    # tf.keras.backend.clear_session()
 
     return {name:vals[name].numpy() for name in vals}
 
@@ -287,25 +302,27 @@ if __name__ == '__main__':
     a, b = REG_FN_alpha.domain.min_value, REG_FN_alpha.domain.max_value
     with open(LOG, 'a') as f:
         f.write("%s Hyperparameter cases. " %len(hparams_list))
-    n_experiments =  seed_repeat*(np.log2((b-a)/THRESHOLD_IMPLOSIOM) +  np.log2((b-a)/THRESHOLD_MAX*N_SAMPLE)*N_SAMPLE + N_SAMPLE)
+    n_experiments =  POOL_SIZE*seed_repeat*(np.log2((b-a)/THRESHOLD_IMPLOSIOM) +  np.log2((b-a)/THRESHOLD_MAX*N_SAMPLE)*N_SAMPLE + N_SAMPLE)
     with open(LOG, 'a') as f:
         f.write("Each conducting %s experiments. \n" % n_experiments)
     Total_time = time()
-    with Pool(processes=THREAD_SIZE,initializer=initialize) as pool:
-    # with FalsePool(processes=THREAD_SIZE,initializer=initialize) as pool:
-        for hp_case, hparams in enumerate(hparams_list):
+    for hp_case, hparams in enumerate(hparams_list):
+        with Pool(processes=THREAD_SIZE, initializer=initialize) as pool:
             case_time = time()
             experiments_counts = 0
+
             if hp_case < CASE_DONE:
                 continue
-            # search for flow size implosion domain (including instability)
             with open(LOG, 'a') as f:
                 f.write('\n')
                 f.write(str(datetime.datetime.now()))
-                f.write("------------HP %s / %s" %(hp_case+1,len(hparams_list)))
+                f.write("------------HP %s / %s\n" %(hp_case+1,len(hparams_list)))
             test_time = time()
             with open(LOG, 'a') as f:
                 f.write(str(datetime.datetime.now()) + ', phase 1 start\n')
+
+
+            # search for flow size implosion domain (including instability)
             a,b = REG_FN_alpha.domain.min_value, REG_FN_alpha.domain.max_value
             x = np.linspace(a, b, N_SAMPLE, dtype='float32')
             args = [{'pool_size': POOL_SIZE, SEED.name: seed, REG_FN_alpha.name: tuple([alpha]*POOL_SIZE), **hparams} for seed, alpha in

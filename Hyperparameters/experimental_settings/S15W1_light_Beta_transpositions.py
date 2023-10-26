@@ -9,22 +9,7 @@ FlowEstimator_options = [{
 
             'kernel_initializer' : 'Orthogonal',
             'activation': 'tanh',
-            'implementation': 1
         }
-    },
-
-    {
-            'options': {
-                'kernel_depth' : 2,
-                'width' : 32,
-                'final_activation' : 'linear',
-            },
-            'kernel_options': {
-
-                'kernel_initializer' : 'Orthogonal',
-                'activation': 'relu',
-                'implementation': 1
-            }
     },
 ]
 
@@ -37,7 +22,7 @@ reward_param = {
 
 FIXED_HYPERPARAMETERS = {
     'graph_size': [15],
-    'graph_generators': ['trans_cycle_a', 'cycles_a', 'transpositions'][:1],
+    'graph_generators': ['trans_cycle_a', 'cycles_a', 'transpositions'],
     'inverse': [True],
     'initial_pos': ['SymmetricUniform'],
     'rew_fn':['TwistedManhattan'],
@@ -54,12 +39,12 @@ FIXED_HYPERPARAMETERS = {
     'B_beta':[-1000.],
     'path_redraw':[0],
     'neighborhood':[0],
-    'flowestimator_opt':FlowEstimator_options[:1],
+    'flowestimator_opt':FlowEstimator_options,
     'embedding': [('cos','sin','natural')],
     'optimizer':['Adam'],
     'loss_base':['Apower'],
     'loss_alpha':[2.],
-    'rew_factor':[0.1,1.,10][1:2],
+    'rew_factor':[1.],
     'heuristic_fn':['R_zero'],
     'heuristic_param':[{}],
     'heuristic_factor':[0.],
@@ -68,8 +53,8 @@ FIXED_HYPERPARAMETERS = {
     'loss_cutoff':['none'],
     'lr_schedule':['none'],
     'reg_fn_alpha_schedule':['none'],
-    'normalization_fn': [5],
-    'normalization_nu_fn': [0],
+    'normalization_fn': [0,4],
+    'normalization_nu_fn': [0,2],
     'group_dtype': ['float32']
 }
 
@@ -79,16 +64,16 @@ TUNING_HYPERPARAMETERS = {
 }
 
 HARDWARE_PARAMETERS = {
-    "POOL_SIZE": 1,
-    "GPU_WORKER": 1,
+    "POOL_SIZE": 6,
+    "GPU_WORKER": 2,
     'CPU_WORKER': 0,
     'GPU_MEMORY': 16300
 
 }
 
 DENSITY_PARAMETERS = {
-    'SEED_REPEAT': [4],
-    'N_SAMPLE': [400]
+    'SEED_REPEAT': [1],
+    'N_SAMPLE': [600]
 }
 
 

@@ -68,27 +68,27 @@ FIXED_HYPERPARAMETERS = {
     'loss_cutoff':['none'],
     'lr_schedule':['none'],
     'reg_fn_alpha_schedule':['none'],
-    'normalization_fn': [5],
-    'normalization_nu_fn': [0],
+    'normalization_fn': [4,5],
+    'normalization_nu_fn': [2,3],
     'group_dtype': ['float32']
 }
 
 
 TUNING_HYPERPARAMETERS = {
-    'reg_fn_alpha': [(-20,20)]
+    'reg_fn_alpha': [(-20,40)]
 }
 
 HARDWARE_PARAMETERS = {
     "POOL_SIZE": 1,
-    "GPU_WORKER": 1,
+    "GPU_WORKER": 2,
     'CPU_WORKER': 0,
     'GPU_MEMORY': 16300
 
 }
 
 DENSITY_PARAMETERS = {
-    'SEED_REPEAT': [4],
-    'N_SAMPLE': [400]
+    'SEED_REPEAT': [8],
+    'N_SAMPLE': [600]
 }
 
 
