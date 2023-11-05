@@ -69,13 +69,13 @@ FIXED_HYPERPARAMETERS = {
     'lr_schedule':['none'],
     'reg_fn_alpha_schedule':['none'],
     'normalization_fn': [0],
-    'normalization_nu_fn': [0],
+    'normalization_nu_fn': [2],
     'group_dtype': ['float32']
 }
 
 
 TUNING_HYPERPARAMETERS = {
-    'reg_fn_alpha': [(-20,40)]
+    'reg_fn_alpha': [(-15,10)]
 }
 
 HARDWARE_PARAMETERS = {
@@ -87,8 +87,8 @@ HARDWARE_PARAMETERS = {
 }
 
 DENSITY_PARAMETERS = {
-    'SEED_REPEAT': [8],
-    'N_SAMPLE': [600]
+    'SEED_REPEAT': [2],
+    'N_SAMPLE': [300]
 }
 
 

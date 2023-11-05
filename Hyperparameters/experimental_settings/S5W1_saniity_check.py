@@ -1,7 +1,7 @@
 
 FlowEstimator_options = [{
         'options': {
-            'kernel_depth' : 0,
+            'kernel_depth' : 2,
             'width' : 32,
             'final_activation' : 'linear',
         },
@@ -30,11 +30,11 @@ FIXED_HYPERPARAMETERS = {
     'reg_proj':['OrthReg','AddReg'],
     'reg_fn_logmin':[5.],
     'grad_batch_size':[1],
-    'batch_size':[128],
+    'batch_size':[256],
     'length_cutoff':[10],
     'initial_flow':[1e-3],
     'learning_rate':[1e-3],
-    'epochs':[10],
+    'epochs':[20],
     'step_per_epoch':[5],
     'B_beta':[-1000.],
     'path_redraw':[0],
@@ -53,7 +53,7 @@ FIXED_HYPERPARAMETERS = {
     'loss_cutoff':['none'],
     'lr_schedule':['none'],
     'reg_fn_alpha_schedule':['none'],
-    'normalization_fn': [0,4],
+    'normalization_fn': [0,1,2,3,4,5,6,7],
     'normalization_nu_fn': [0,2],
     'group_dtype': ['float32']
 }
@@ -64,7 +64,7 @@ TUNING_HYPERPARAMETERS = {
 }
 
 HARDWARE_PARAMETERS = {
-    "POOL_SIZE": 10,
+    "POOL_SIZE": 20,
     "GPU_WORKER": 1,
     'CPU_WORKER': 0,
     'GPU_MEMORY': 16300
@@ -72,8 +72,8 @@ HARDWARE_PARAMETERS = {
 }
 
 DENSITY_PARAMETERS = {
-    'SEED_REPEAT': [1],
-    'N_SAMPLE': [20]
+    'SEED_REPEAT': [8],
+    'N_SAMPLE': [300]
 }
 
 

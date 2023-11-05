@@ -29,14 +29,16 @@ class softmax_head(tf.keras.Model):
 
 
 class multi_softmax_head(tf.keras.layers.Layer):
-    def __init__(self,kernel):
+    def __init__(self, kernel):
         super(multi_softmax_head, self).__init__()
         self.kernel = kernel
 
     def build(self, input_shape):
         self.kernel.build(input_shape)
-        # self.kernel_pathwise_multiedge = tf.keras.layers.TimeDistributed(self.kernel)
 
+    def check(self,inputs):
+        f = self.kernel(inputs)
+        return tf.math.exp(f[:, :, :, -1:]), tf.nn.softmax(f[:, :, :, :-1], axis=3)
     @tf.function
     def call(self, inputs):
         f = self.kernel(inputs)
@@ -149,21 +151,23 @@ def CNNmultisplit_gen(nflow, ndirections, kernel_depth=2, width=64, embedding_di
     widths = [embedding_dim]+[width]*kernel_depth
     # print(widths)
     flow_kernel = []
-    for i in range(nflow):
+    for _ in range(nflow):
         layers = [tf.keras.layers.Input(shape=(*shape[:-1],1))]
         if kernel_depth>0:
             layers.append(
                 tf.keras.layers.Conv3D(
                         widths[1],
                         (1,  1, widths[0]),
+                        name='kernel_layer%s'% 0 ,
                         **kernel_options
                 )
             )
-            for i, width in enumerate(widths[1:-1]):
+            for j, width in enumerate(widths[1:-1]):
                 layers.append(
                     tf.keras.layers.Conv3D(
-                        widths[i + 1],
+                        widths[j + 1],
                         (1,  1, 1),
+                        name='kernel_layer%s' % (j+1),
                         **kernel_options
                     )
                 )
@@ -171,7 +175,8 @@ def CNNmultisplit_gen(nflow, ndirections, kernel_depth=2, width=64, embedding_di
                 tf.keras.layers.Conv3D(
                     nout ,
                     (1, 1,1),
-                    activation=final_activation
+                    activation=final_activation,
+                    name='kernel_layer%s' % 'final',
                 )
             )
         else:
@@ -179,7 +184,8 @@ def CNNmultisplit_gen(nflow, ndirections, kernel_depth=2, width=64, embedding_di
                 tf.keras.layers.Conv3D(
                     nout ,
                     (1, 1, embedding_dim),
-                    activation=final_activation
+                    activation=final_activation,
+                    name = 'kernel_layer%s' % 'final',
                 )
             )
         # layers.append(ChannelReshape(nflow,nout))

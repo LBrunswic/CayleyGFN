@@ -7,28 +7,28 @@ import tensorflow as tf
 
 @tf.function
 def gradient_add_scalar(self,grad_x,grad_y,s):
+    """ Compute the sum of two list of tensors with scalar multiplication
+    """
     n_train =  self.n_train
-    res = [s*grad_x[i]+s*grad_y[i]  for i in range(n_train)]
+    res = [s*(grad_x[i]+grad_y[i])  for i in range(n_train)]
     return res
 
 @tf.function
 def exploration_forcing(tot,delta,exploration):
+    """ Constant exploration forcing"""
     return  exploration
 
 @tf.function
 def no_reg(self,loss_gradients,reg_gradients):
+    """ loss-regularization manipulation forgetting regularization"""
     return loss_gradients
 
 
-
-@tf.function
-def next_action2(gathered,pos):
-    pos = tf.experimental.numpy.swapaxes(pos,1,2)
-    res =  tf.linalg.matvec(gathered, pos,name='ApplyAction')
-    res =  tf.experimental.numpy.swapaxes(res,1,2)
-    return res
-
 class MultiGFlowCayleyLinear(tf.keras.Model):
+    """Class implementing GFlowNets on CayleyGraph
+
+    """
+
     def __init__(self,
                  graph,
                  reward,
@@ -51,6 +51,7 @@ class MultiGFlowCayleyLinear(tf.keras.Model):
             name = 'flow_on_'+graph.name
         super(MultiGFlowCayleyLinear, self).__init__(name=name, **kwargs)
         self.logger = logger
+        self.logger.info('GFlow Logger configured')
         self.metric_list = [tf.keras.metrics.Mean(name="loss")]
         self.ncopy = ncopy
         self.graph = graph
@@ -147,6 +148,8 @@ class MultiGFlowCayleyLinear(tf.keras.Model):
         paths_reward = self.paths_reward
         res = self.FlowCompute(forward_edges, backward_edges, path_init_flow, paths_reward)
         self.n_train = len(self.trainable_variables)
+        for var in self.variables:
+            self.logger.debug(str(var.name)+str(var.shape))
         return res
     def rotate_paths(self):
         self.paths_true.assign(tf.roll(self.paths_true,shift=1,axis=0))
@@ -157,8 +160,8 @@ class MultiGFlowCayleyLinear(tf.keras.Model):
     def update_reward(self):
         self.paths_reward.assign(self.reward(self.paths_true[0], axis=-2))
     # @tf.function
-    def FlowCompute(self,forward_edges,backward_edges, path_init_flow,paths_reward):
-        f_out = tf.reduce_sum(self.FlowEstimator(backward_edges[:, :, 0:1])[:,:,0,:,:],axis=-2)
+    def FlowCompute(self, forward_edges, backward_edges, path_init_flow, paths_reward):
+        f_out = tf.reduce_sum(self.FlowEstimator(backward_edges[:, :, 0:1])[:, :, 0, :, :],axis=-2)
         R = paths_reward/self.reward_rescale
         f_init = path_init_flow * self.initflow_estimate() * self.reward_rescale
         f_in = tf.reduce_sum(
@@ -207,6 +210,9 @@ class MultiGFlowCayleyLinear(tf.keras.Model):
         self.update_init_flow()
 
     def evaluate(self, **kwargs):
+        a,b = self.FlowEstimator.check(self.backward_edges[:, :, 0:1])
+        # self.logger.debug('HEAD'+str(a.shape)+str(b.shape))
+        # self.logger.debug('HEAD'+str(tf.reduce_sum(b[0,0,:,:,:],axis=1).numpy()))
         return {m.name: tf.broadcast_to(m.result(),(self.ncopy,)) for m in self.metrics}
 
     # @tf.function
