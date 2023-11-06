@@ -75,14 +75,14 @@ FIXED_HYPERPARAMETERS = {
 
 
 TUNING_HYPERPARAMETERS = {
-    'reg_fn_alpha': [(-15,10)]
+    'reg_fn_alpha':  [(-20,-10),(-10,0),(0,10),(10,20)]
 }
 
 HARDWARE_PARAMETERS = {
-    "POOL_SIZE": 1,
-    "GPU_WORKER": 2,
+    "POOL_SIZE": 2,
+    "GPU_WORKER": 1,
     'CPU_WORKER': 0,
-    'GPU_MEMORY': 16300
+    'GPU_MEMORY': 24000
 
 }
 
