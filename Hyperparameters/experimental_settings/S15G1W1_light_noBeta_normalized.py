@@ -82,7 +82,7 @@ HARDWARE_PARAMETERS = {
     "POOL_SIZE": 2,
     "GPU_WORKER": 1,
     'CPU_WORKER': 0,
-    'GPU_MEMORY': 24000
+    'GPU_MEMORY': 16000
 
 }
 
