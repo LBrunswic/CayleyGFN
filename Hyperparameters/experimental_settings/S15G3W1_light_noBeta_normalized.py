@@ -75,7 +75,7 @@ FIXED_HYPERPARAMETERS = {
 
 
 TUNING_HYPERPARAMETERS = {
-    'reg_fn_alpha': [-20,20]
+    'reg_fn_alpha': [(-20,20)]
 }
 
 HARDWARE_PARAMETERS = {
