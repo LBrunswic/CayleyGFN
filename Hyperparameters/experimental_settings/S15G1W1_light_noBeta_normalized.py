@@ -48,8 +48,8 @@ FIXED_HYPERPARAMETERS = {
     'batch_size':[1024],
     'length_cutoff':[30],
     'initial_flow':[1e-3],
-    'learning_rate':[5*1e-3],
-    'epochs':[20],
+    'learning_rate':[2*1e-3],
+    'epochs':[100],
     'step_per_epoch':[5],
     'B_beta':[-1000.],
     'path_redraw':[0],
@@ -68,21 +68,21 @@ FIXED_HYPERPARAMETERS = {
     'loss_cutoff':['none'],
     'lr_schedule':['none'],
     'reg_fn_alpha_schedule':['none'],
-    'normalization_fn': [1,2,3,4, 5,6,7],
+    'normalization_fn': [1, 2, 3, 4, 5, 6, 7],
     'normalization_nu_fn': [2],
     'group_dtype': ['float32']
 }
 
 
 TUNING_HYPERPARAMETERS = {
-    'reg_fn_alpha':  [(-20,-10),(-10,0),(0,10),(10,20)]
+    'reg_fn_alpha':  [(-20,20)]
 }
 
 HARDWARE_PARAMETERS = {
-    "POOL_SIZE": 2,
+    "POOL_SIZE": 4,
     "GPU_WORKER": 1,
     'CPU_WORKER': 0,
-    'GPU_MEMORY': 16000
+    'GPU_MEMORY': 24000
 
 }
 

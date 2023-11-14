@@ -32,10 +32,10 @@ if __name__ == '__main__':
         # 'S5W1_sanity_check',
         # 'S15G1W1_light_noBeta_baseline',
         # 'S15G2W1_light_noBeta_baseline',
-        'S15G3W1_light_noBeta_baseline',
-        # 'S15G1W1_light_noBeta_normalized',
+        # 'S15G3W1_light_noBeta_baseline',
+        'S15G1W1_light_noBeta_normalized',
         # 'S15G2W1_light_noBeta_normalized',
-        'S15G3W1_light_noBeta_normalized',
+        # 'S15G3W1_light_noBeta_normalized',
 
     ]
 
@@ -162,7 +162,8 @@ if __name__ == '__main__':
             with Pool(
                     processes=HARDWARE_PARAMETERS['GPU_WORKER']+HARDWARE_PARAMETERS['CPU_WORKER'],
                     initializer=poolutils.initialize,
-                    initargs=(HARDWARE_PARAMETERS,BASE_LOGS_FOLDER)
+                    initargs=(HARDWARE_PARAMETERS,BASE_LOGS_FOLDER),
+                    maxtasksperchild=1
             ) as pool:
                 pool.apply(hyperparametersutils.record_case_HP, args=(log_dir, HP))
                 results = pool.map(run_wrapper, hparams_list[DONE:], chunksize=1)
