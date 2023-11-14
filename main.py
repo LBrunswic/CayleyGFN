@@ -1,4 +1,5 @@
 import os,time
+import sys
 from datetime import datetime
 os.environ['TZ'] = 'Asia/Shanghai'
 time.tzset()
@@ -16,9 +17,13 @@ os.makedirs(BASE_LOGS_FOLDER,exist_ok=True)
 os.makedirs(BASE_DATA_FOLDER,exist_ok=True)
 logger = get_logger(name='general',filename=os.path.join(BASE_LOGS_FOLDER,'general.log'), filemode='w')
 logger.info('START')
-DONE = 0
 TEST = False
 k=0
+try:
+    DONE =  int(sys.argv[1])
+except:
+    DONE = 0
+
 if __name__ == '__main__':
 
 
