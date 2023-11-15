@@ -35,7 +35,7 @@ class PandasRecord(tf.keras.callbacks.Callback):
         self.results.append(res)
     def on_train_end(self, logs=None):
 
-        self.results = pandas.concat(pandas.DataFrame(concat_dict_of_ndarray(self.results)))
+        self.results = pandas.DataFrame(concat_dict_of_ndarray(self.results))
 
 class ReplayBuffer(tf.keras.callbacks.Callback):
     def __init__(self, monitor="ReplayBuffer", folder='Knowledge',epochs=10):

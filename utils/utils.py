@@ -2,6 +2,7 @@ import numpy as np
 import shutil
 import os
 from datetime import datetime
+import numpy as np
 from time import time
 
 def reverse_readline(filename, buf_size=8192):
@@ -135,7 +136,8 @@ def concat_dict_of_ndarray(dict_list,check_types=True,check_lengths=True):
     if check_types:
         for key in dict_list[0].keys():
             for d in dict_list:
-                assert d[key].dtype == dict_list[0][key][0].dtype, 'key %s has different types'%key
+                assert isinstance(d[key], np.ndarray), 'key %s is not a list'%key
+                assert d[key].dtype == dict_list[0][key].dtype, 'key %s has different types'%key
     if check_lengths:
         for d in dict_list:
             i = 0
