@@ -32,21 +32,10 @@ class PandasRecord(tf.keras.callbacks.Callback):
             if len(res[key].shape)>1:
                 print(key,res[key].shape)
                 print(res[key])
-
-
-        # res = pandas.DataFrame(res)
         self.results.append(res)
-        # if self.results is None:
-        #     self.results = res
-        # else:
-        #     res.index = res.index + self.results.index.stop
-        #     self.results = pandas.concat([self.results,res])
-        #
     def on_train_end(self, logs=None):
 
-        self.results = pandas.concat(concat_dict_of_lists(self.results))
-        self.results.index = np.arange(len(self.results))
-        # self.results.to_csv(os.path.join(self.hparams['logdir'],'results.csv'))
+        self.results = pandas.concat(pandas.DataFrame(concat_dict_of_lists(self.results)))
 
 class ReplayBuffer(tf.keras.callbacks.Callback):
     def __init__(self, monitor="ReplayBuffer", folder='Knowledge',epochs=10):
