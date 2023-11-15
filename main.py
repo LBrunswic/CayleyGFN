@@ -17,20 +17,24 @@ os.makedirs(BASE_LOGS_FOLDER,exist_ok=True)
 os.makedirs(BASE_DATA_FOLDER,exist_ok=True)
 logger = get_logger(name='general',filename=os.path.join(BASE_LOGS_FOLDER,'general.log'), filemode='w')
 logger.info('START')
-TEST = False
 
-k=0
+
 
 
 try:
-    DEBUG =  int(sys.argv[2])
+    DEBUG =  int(sys.argv[1])
 except:
     DEBUG = False
 
 try:
-    DELAY =  int(sys.argv[3])
+    DELAY =  int(sys.argv[2])
 except:
     DELAY = 0
+
+try:
+    TEST =  int(sys.argv[3])
+except:
+    TEST = 0
 
 if __name__ == '__main__':
 
@@ -122,7 +126,7 @@ if __name__ == '__main__':
 
         HP = hyperparametersutils.record_possible_hp(
             {
-                'seed': SEEDS[k:DENSITY_PARAMETERS['SEED_REPEAT'][0]+k],
+                'seed': SEEDS[:DENSITY_PARAMETERS['SEED_REPEAT'][0]],
                 **DENSITY_PARAMETERS,
                 **FIXED_HYPERPARAMETERS,
                 **TUNING_HYPERPARAMETERS
@@ -149,22 +153,17 @@ if __name__ == '__main__':
 
             from tensorboard.plugins.hparams import api as hp
             from TestingEnv.poolutils import get_worker_number
-
-            experiments_hparams=hparams_list[0]
-            experiments_hparams['logdir'] = os.path.join(experiments_hparams['logdir'],
-                                                         'TEST' + '-' + str(datetime.now()))
-            from train import train_test_model
-
-            T = time.time()
-            experiments_hparams.update({'profile_logdir': PROFILE_FOLDER})
-            result, returns,flow = train_test_model(experiments_hparams,logger)
-
-            print('Done %s Experiments per hour!' % ((experiments_hparams['N_SAMPLE']) / (time.time() - T) * 3600))
-            memory = tf.config.experimental.get_memory_info('GPU:0')
-            for key in memory:
-                print(key,int(memory[key])/2**30)
-
-            # print(tf.config.experimental.get_memory_usage(gpus[0]))
+            for experiments_hparams in hparams_list:
+                experiments_hparams['logdir'] = os.path.join(experiments_hparams['logdir'],
+                                                             'TEST' + '-' + str(datetime.now()))
+                from train import train_test_model
+                T = time.time()
+                experiments_hparams.update({'profile_logdir': PROFILE_FOLDER})
+                result, returns,flow = train_test_model(experiments_hparams,logger)
+                print('Done %s Experiments per hour!' % ((experiments_hparams['N_SAMPLE']) / (time.time() - T) * 3600))
+                memory = tf.config.experimental.get_memory_info('GPU:0')
+                for key in memory:
+                    print(key,int(memory[key])/2**30)
 
         else:
             logger.info('%s cases to do. Each having %s experiments ' % (len(hparams_list),DENSITY_PARAMETERS['N_SAMPLE']))
