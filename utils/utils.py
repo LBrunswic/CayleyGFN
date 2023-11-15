@@ -148,6 +148,7 @@ def concat_dict_of_lists(dict_list,check_types=True,check_lengths=True):
     res = {}
     for key in dict_list[0].keys():
         res[key] = []
+        print(type(d[key]))
         for d in dict_list:
             res[key] += list(d[key])
     return res

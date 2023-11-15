@@ -20,9 +20,15 @@ class PandasRecord(tf.keras.callbacks.Callback):
         episode = epoch//self.epoch_period
         true_epoch = 1+epoch % self.epoch_period
         res.update({key: [self.hparams[key]]*self.nflow for key in self.hparams if key != 'reg_fn_alpha'})
-        res.update({'epoch': [true_epoch]*self.nflow})
+        res.update({'epoch': np.array([true_epoch]*self.nflow)})
         res.update({'reg_fn_alpha': self.alpha_range[episode]})
         res.update({'episode': [episode]*self.nflow })
+        for key in res:
+            if isinstance(res[key],tf.Tensor):
+                res[key] = res[key].numpy()
+            if isinstance(res[key],list):
+                res[key] = np.array(res[key])
+            print(res[key].shape)
         # res = pandas.DataFrame(res)
         self.results.append(res)
         # if self.results is None:
