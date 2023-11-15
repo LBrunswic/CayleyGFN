@@ -32,7 +32,7 @@ class PandasRecord(tf.keras.callbacks.Callback):
         #     self.results = pandas.concat([self.results,res])
         #
     def on_train_end(self, logs=None):
-        self.results = pandas.concat(self.results)
+        self.results = pandas.concat([pandas.DataFrame(x) for x in self.results])
         self.results.index = np.arange(len(self.results))
         # self.results.to_csv(os.path.join(self.hparams['logdir'],'results.csv'))
 
