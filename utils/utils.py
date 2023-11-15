@@ -122,3 +122,32 @@ def remove(L,TESTS_FOLDER = 'tests'):
     A = extract(TESTS_FOLDER = 'tests')
     for x in L:
         shutil.rmtree(A[x]['folder_path'])
+
+def concat_dict_of_lists(dict_list,check_types=True,check_lengths=True):
+    """
+    Concatenates list of dicts of lists into one dict of lists
+    if check_type is True, checks that for each keys list of every dict have the same type
+    if check_lengths is True, checks that for each keys list of every dict have the same length
+    :param dict_list:
+    :param check_types:
+    :return:
+    """
+    if check_types:
+        for key in dict_list[0].keys():
+            for d in dict_list:
+                assert type(d[key][0]) == type(dict_list[0][key][0]),'key %s has different types'%key
+    if check_lengths:
+        for d in dict_list:
+            i = 0
+            for key in dict_list[0].keys():
+                if i == 0:
+                    L = len(d[key])
+                    i =1
+                else:
+                    assert L == len(d[key]),'key %s has different lengths'%key
+    res = {}
+    for key in dict_list[0].keys():
+        res[key] = []
+        for d in dict_list:
+            res[key] += d[key]
+    return res

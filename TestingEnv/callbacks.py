@@ -5,7 +5,7 @@ import numpy as np
 from time import time
 import pandas
 from datetime import datetime
-
+from utils.utils import concat_dict_of_lists
 
 class PandasRecord(tf.keras.callbacks.Callback):
     def __init__(self,hparams,alpha_range,epoch_period = 10):
@@ -32,7 +32,8 @@ class PandasRecord(tf.keras.callbacks.Callback):
         #     self.results = pandas.concat([self.results,res])
         #
     def on_train_end(self, logs=None):
-        self.results = pandas.concat([pandas.DataFrame(x) for x in self.results])
+
+        self.results = pandas.concat(concat_dict_of_lists(self.results))
         self.results.index = np.arange(len(self.results))
         # self.results.to_csv(os.path.join(self.hparams['logdir'],'results.csv'))
 
