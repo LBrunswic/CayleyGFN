@@ -10,7 +10,7 @@ from datetime import datetime
 class PandasRecord(tf.keras.callbacks.Callback):
     def __init__(self,hparams,alpha_range,epoch_period = 10):
         self.epoch_period = epoch_period
-        self.results = None
+        self.results = []
         self.hparams = hparams
         self.nflow = hparams['pool_size']
         self.alpha_range = alpha_range
@@ -23,18 +23,18 @@ class PandasRecord(tf.keras.callbacks.Callback):
         res.update({'epoch': [true_epoch]*self.nflow})
         res.update({'reg_fn_alpha': self.alpha_range[episode]})
         res.update({'episode': [episode]*self.nflow })
-        res = pandas.DataFrame(res)
-
-        if self.results is None:
-            self.results = res
-        else:
-            res.index = res.index + self.results.index.stop
-            print('new results')
-            print(type(self.results))
-            print(type(res))
-            print(res)
-            self.results = pandas.concat([self.results,res])
-
+        # res = pandas.DataFrame(res)
+        self.results.append(res)
+        # if self.results is None:
+        #     self.results = res
+        # else:
+        #     res.index = res.index + self.results.index.stop
+        #     self.results = pandas.concat([self.results,res])
+        #
+    def on_train_end(self, logs=None):
+        self.results = pandas.concat(self.results)
+        self.results.index = np.arange(len(self.results))
+        # self.results.to_csv(os.path.join(self.hparams['logdir'],'results.csv'))
 
 class ReplayBuffer(tf.keras.callbacks.Callback):
     def __init__(self, monitor="ReplayBuffer", folder='Knowledge',epochs=10):
