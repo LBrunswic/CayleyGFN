@@ -19,16 +19,21 @@ class PandasRecord(tf.keras.callbacks.Callback):
         res = self.model.evaluate()
         episode = epoch//self.epoch_period
         true_epoch = 1+epoch % self.epoch_period
-        res.update({key: [self.hparams[key]]*self.nflow for key in self.hparams if key != 'reg_fn_alpha'})
+        res.update({key: [self.hparams[key]]*self.nflow for key in self.hparams if key not in  ['reg_fn_alpha','embedding']})
         res.update({'epoch': np.array([true_epoch]*self.nflow)})
         res.update({'reg_fn_alpha': self.alpha_range[episode]})
+        res.update({'embedding': [str(self.hparams['embedding'])]*self.nflow })
         res.update({'episode': [episode]*self.nflow })
         for key in res:
             if isinstance(res[key],tf.Tensor):
                 res[key] = res[key].numpy()
             if isinstance(res[key],list):
                 res[key] = np.array(res[key])
-            print(res[key].shape)
+            if len(res[key].shape)>1:
+                print(key,res[key].shape)
+                print(res[key])
+
+
         # res = pandas.DataFrame(res)
         self.results.append(res)
         # if self.results is None:
