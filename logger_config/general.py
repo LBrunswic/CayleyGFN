@@ -32,3 +32,14 @@ def log_tensorlist(logger,to_log,name='',level='debug',prefix=''):
     for tensor in to_log:
         logger.debug(tensor.name)
         logger.debug(str(tensor))
+
+def check_success(folders):
+    worker_logs = []
+    for folder in folders:
+        worker_logs.append([os.path.join(folder,x) for x  in os.listdir(folder) if 'worker' in x][1:])
+    for worker_log in worker_logs:
+        for log in worker_log:
+            with open(log,'r') as f:
+                lines = f.readlines()
+                if 'Experiment done' not in lines[-1]:
+                    return False

@@ -18,11 +18,19 @@ os.makedirs(BASE_DATA_FOLDER,exist_ok=True)
 logger = get_logger(name='general',filename=os.path.join(BASE_LOGS_FOLDER,'general.log'), filemode='w')
 logger.info('START')
 TEST = False
+
 k=0
+
+
 try:
-    DONE =  int(sys.argv[1])
+    DEBUG =  int(sys.argv[2])
 except:
-    DONE = 0
+    DEBUG = False
+
+try:
+    DELAY =  int(sys.argv[3])
+except:
+    DELAY = 0
 
 if __name__ == '__main__':
 
@@ -50,6 +58,7 @@ if __name__ == '__main__':
         worker = get_worker_number()
         logger = logging.getLogger(name='worker-%s' % worker)
         logger.critical('test')
+        logger.info(str(experiments_hparams))
 
         import os
         import tensorflow as tf
@@ -159,13 +168,16 @@ if __name__ == '__main__':
 
         else:
             logger.info('%s cases to do. Each having %s experiments ' % (len(hparams_list),DENSITY_PARAMETERS['N_SAMPLE']))
+            import multiprocessing, logging
+            logger = multiprocessing.log_to_stderr()
+            logger.setLevel(logging.INFO)
             with Pool(
                     processes=HARDWARE_PARAMETERS['GPU_WORKER']+HARDWARE_PARAMETERS['CPU_WORKER'],
                     initializer=poolutils.initialize,
-                    initargs=(HARDWARE_PARAMETERS,BASE_LOGS_FOLDER),
+                    initargs=(HARDWARE_PARAMETERS,BASE_LOGS_FOLDER,DEBUG,DELAY),
                     maxtasksperchild=1
             ) as pool:
                 pool.apply(hyperparametersutils.record_case_HP, args=(log_dir, HP))
-                results = pool.map(run_wrapper, hparams_list[DONE:], chunksize=1)
+                results = pool.map(run_wrapper, hparams_list, chunksize=1)
 
     print("THAT'S ALL FOLKS")

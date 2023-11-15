@@ -1,7 +1,7 @@
 import multiprocessing
 from datetime import datetime
 from logger_config import get_logger
-import os
+
 
 def get_worker_number():
     try:
@@ -11,8 +11,13 @@ def get_worker_number():
     return worker
 
 
-def initialize(hardware_parameters,BASE_LOGS_FOLDER):
-
+def initialize(hardware_parameters,BASE_LOGS_FOLDER, DEBUG, DELAY, **KwargDict):
+    import os
+    import time
+    if DEBUG:
+        os.environ['TF_CPP_MIN_VLOG_LEVEL'] = '3'
+    time.sleep(DELAY)
+    print('WORKER INITIALIZATION')
     # GET WORKER NUMBER
     worker = get_worker_number()
     logger = get_logger(name='worker-%s' % worker, filename=os.path.join(BASE_LOGS_FOLDER, 'worker-%s.log' % worker),
