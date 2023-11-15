@@ -1,7 +1,7 @@
 
 FlowEstimator_options = [{
         'options': {
-            'kernel_depth' : 2,
+            'kernel_depth' : 1,
             'width' : 32,
             'final_activation' : 'linear',
         },
@@ -48,8 +48,8 @@ FIXED_HYPERPARAMETERS = {
     'batch_size':[1024],
     'length_cutoff':[30],
     'initial_flow':[1e-3],
-    'learning_rate':[5*1e-3],
-    'epochs':[10],
+    'learning_rate':[2*1e-3],
+    'epochs':[100],
     'step_per_epoch':[5],
     'B_beta':[-1000.],
     'path_redraw':[0],
@@ -59,7 +59,7 @@ FIXED_HYPERPARAMETERS = {
     'optimizer':['Adam'],
     'loss_base':['Apower'],
     'loss_alpha':[2.],
-    'rew_factor':[0.1,1.,10][1:2],
+    'rew_factor':[0.1,1.,10],
     'heuristic_fn':['R_zero'],
     'heuristic_param':[{}],
     'heuristic_factor':[0.],
@@ -69,13 +69,13 @@ FIXED_HYPERPARAMETERS = {
     'lr_schedule':['none'],
     'reg_fn_alpha_schedule':['none'],
     'normalization_fn': [0],
-    'normalization_nu_fn': [0],
+    'normalization_nu_fn': [0,2],
     'group_dtype': ['float32']
 }
 
 
 TUNING_HYPERPARAMETERS = {
-    'reg_fn_alpha': [(-20,20)]
+    'reg_fn_alpha':  [(-20,20)]
 }
 
 HARDWARE_PARAMETERS = {
@@ -88,7 +88,7 @@ HARDWARE_PARAMETERS = {
 
 DENSITY_PARAMETERS = {
     'SEED_REPEAT': [8],
-    'N_SAMPLE': [1000]
+    'N_SAMPLE': [400]
 }
 
 
