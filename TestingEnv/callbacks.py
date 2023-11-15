@@ -29,6 +29,9 @@ class PandasRecord(tf.keras.callbacks.Callback):
             self.results = res
         else:
             res.index = res.index + self.results.index.stop
+            print('new results')
+            print(type(self.results))
+            print(type(res))
             self.results = pandas.concat([self.results,res])
 
 

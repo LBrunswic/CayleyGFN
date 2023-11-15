@@ -149,6 +149,7 @@ if __name__ == '__main__':
 
             GPU = 0
             gpus = tf.config.list_physical_devices('GPU')
+            tf.config.set_visible_devices(gpus[GPU], 'GPU')
             tf.config.experimental.set_memory_growth(gpus[GPU], True)
 
             from tensorboard.plugins.hparams import api as hp
