@@ -32,6 +32,7 @@ class PandasRecord(tf.keras.callbacks.Callback):
             print('new results')
             print(type(self.results))
             print(type(res))
+            print(res)
             self.results = pandas.concat([self.results,res])
 
 
