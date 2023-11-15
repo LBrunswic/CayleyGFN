@@ -149,5 +149,5 @@ def concat_dict_of_lists(dict_list,check_types=True,check_lengths=True):
     for key in dict_list[0].keys():
         res[key] = []
         for d in dict_list:
-            res[key] += d[key]
+            res[key] += list(d[key])
     return res
