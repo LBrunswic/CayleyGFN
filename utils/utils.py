@@ -123,7 +123,7 @@ def remove(L,TESTS_FOLDER = 'tests'):
     for x in L:
         shutil.rmtree(A[x]['folder_path'])
 
-def concat_dict_of_lists(dict_list,check_types=True,check_lengths=True):
+def concat_dict_of_ndarray(dict_list,check_types=True,check_lengths=True):
     """
     Concatenates list of dicts of lists into one dict of lists
     if check_type is True, checks that for each keys list of every dict have the same type
@@ -135,16 +135,16 @@ def concat_dict_of_lists(dict_list,check_types=True,check_lengths=True):
     if check_types:
         for key in dict_list[0].keys():
             for d in dict_list:
-                assert type(d[key][0]) == type(dict_list[0][key][0]),'key %s has different types'%key
+                assert d[key].dtype == dict_list[0][key][0].dtype, 'key %s has different types'%key
     if check_lengths:
         for d in dict_list:
             i = 0
             for key in dict_list[0].keys():
                 if i == 0:
-                    L = len(d[key])
+                    L = d[key].shape
                     i =1
                 else:
-                    assert L == len(d[key]),'key %s has different lengths'%key
+                    assert np.all(L == d[key].shape), 'key %s has different lengths'%key
     res = {}
     for key in dict_list[0].keys():
         res[key] = []
