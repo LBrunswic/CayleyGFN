@@ -59,7 +59,7 @@ FIXED_HYPERPARAMETERS = {
     'optimizer':['Adam'],
     'loss_base':['Apower'],
     'loss_alpha':[2.],
-    'rew_factor':[0.1,1.,10],
+    'rew_factor':[0.1,1.,10][1:2],
     'heuristic_fn':['R_zero'],
     'heuristic_param':[{}],
     'heuristic_factor':[0.],

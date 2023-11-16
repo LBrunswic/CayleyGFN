@@ -45,11 +45,11 @@ FIXED_HYPERPARAMETERS = {
     'reg_proj':['OrthReg','AddReg'],
     'reg_fn_logmin':[5.],
     'grad_batch_size':[1],
-    'batch_size':[2048],
+    'batch_size':[1024],
     'length_cutoff':[30],
     'initial_flow':[1e-3],
-    'learning_rate':[5*1e-3],
-    'epochs':[50],
+    'learning_rate':[2*1e-3],
+    'epochs':[100],
     'step_per_epoch':[5],
     'B_beta':[-1000.],
     'path_redraw':[0],
@@ -79,7 +79,7 @@ TUNING_HYPERPARAMETERS = {
 }
 
 HARDWARE_PARAMETERS = {
-    "POOL_SIZE": 2,
+    "POOL_SIZE": 4,
     "GPU_WORKER": 1,
     'CPU_WORKER': 0,
     'GPU_MEMORY': 24000
@@ -88,7 +88,7 @@ HARDWARE_PARAMETERS = {
 
 DENSITY_PARAMETERS = {
     'SEED_REPEAT': [4],
-    'N_SAMPLE': [800]
+    'N_SAMPLE': [400]
 }
 
 
