@@ -13,7 +13,7 @@ from logger_config import get_logger, log_dict
 
 
 experiments_hparams = {
-    'EXPERIMENT_ID':1,
+    'EXPERIMENT_ID':'1',
 
     'profile':True,
     'N_SAMPLE': 20,
