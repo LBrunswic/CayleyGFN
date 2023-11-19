@@ -62,8 +62,11 @@ experiments_hparams = {
 }
 
 experiments_hparams['logdir'] = 'LOGS'
-logger = get_logger(name=experiments_hparams['EXPERIMENT_ID'], filename=os.path.join(experiments_hparams['logdir'], experiments_hparams['EXPERIMENT_ID'] + '.log'),
-                        filemode='w')
+logger = get_logger(
+    name=experiments_hparams['EXPERIMENT_ID'],
+    filename=os.path.join(experiments_hparams['logdir'], experiments_hparams['EXPERIMENT_ID'] + '.log'),
+    filemode='w'
+)
 result, returns, flow = train_test_model(experiments_hparams, logger)
 data_save = os.path.join(
     'RESULTS',
