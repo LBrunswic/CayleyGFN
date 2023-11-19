@@ -61,6 +61,7 @@ experiments_hparams = {
     'pool_size': 10,
 }
 
+
 experiments_hparams['logdir'] = 'LOGS'
 logger = get_logger(
     name=experiments_hparams['EXPERIMENT_ID'],
