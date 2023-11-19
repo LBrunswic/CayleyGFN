@@ -259,7 +259,7 @@ def groupTTTlog(epsilon=0.5):
         return data_copy
     return aux
 
-groupTTT = lambda epsilon: (lambda x:x)
+# groupTTT = lambda epsilon: (lambda x:x)
 
 for omega in normalization_filters:
     for nu in normalization_nu_filters:
@@ -277,7 +277,7 @@ for omega in normalization_filters:
                 data_here=data1,
                 # y_range = (0,1,0.05,np.exp(1)),
                 comparison=['normalization_fn','normalization_nu_fn','reg_fn_gen','reg_proj'],
-                # preTTT=groupTTT(epsilon=0.5)
+                preTTT=groupTTT(epsilon=0.5)
             )
             # make_graph(
             #     'reg_fn_alpha',

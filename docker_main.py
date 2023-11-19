@@ -1,25 +1,28 @@
 
 import tensorflow as tf
-gpus = tf.config.list_physical_devices('GPU')
-tf.config.experimental.set_memory_growth(gpus[0], True)
+# gpus = tf.config.list_physical_devices('GPU')
+# tf.config.experimental.set_memory_growth(gpus[0], True)
 
 import os, sys
 from datetime import datetime
 from train import train_test_model
 from logger_config import get_logger, log_dict
+import argparse
 
 
 
+parser = argparse.ArgumentParser(
+                    prog='CayleyGFN',
+                    description='Launch a unit experiment',
+)
 
+parser.add_argument('EXPERIMENT_ID',default='1',type=str)
+parser.add_argument('seed',default=9220,type=int)
+args = parser.parse_args().__dict__
 
 experiments_hparams = {
-    'EXPERIMENT_ID':'1',
-
     'profile':True,
-    'N_SAMPLE': 3200,
-
-    'seed': 9220,
-
+    'N_SAMPLE': 32,
     'graph_size': 15,
     'graph_generators': 'trans_cycle_a',
     'inverse': True,
@@ -59,8 +62,8 @@ experiments_hparams = {
     'group_dtype': 'float32',
     'reg_fn_alpha': (-20, 20),
     'pool_size': 32,
+    **args,
 }
-
 
 
 experiments_hparams['logdir'] = 'LOGS'
@@ -72,6 +75,6 @@ logger = get_logger(
 result, returns, flow = train_test_model(experiments_hparams, logger)
 data_save = os.path.join(
     'RESULTS',
-    experiments_hparams['EXPERIMENT_ID']+'.csv'
+    experiments_hparams['EXPERIMENT_ID']+'_'+str(experiments_hparams['seed'])+'.csv'
 )
 result.to_csv(data_save)
