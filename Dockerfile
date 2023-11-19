@@ -7,7 +7,7 @@ RUN git clone http://$GIT_SERVER/$GIT_REPO TASK
 WORKDIR /TASK
 RUN git config  --global --add advice.detachedHead false
 RUN git config --global --add safe.directory /TASK && git checkout $GIT_HASH
-RUN chown -R 1000:1000 TASK
+RUN chown -R 1000:1000 /TASK
 VOLUME /tf/TASK/RESULTS
 VOLUME /tf/TASK/LOGS
 VOLUME /tf/TASK/MODELS
