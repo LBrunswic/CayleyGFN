@@ -137,7 +137,10 @@ class fn_alpha_tune_grid(tf.keras.callbacks.Callback):
     def on_epoch_begin(self, epoch, logs=None):
         if epoch % self.epoch_per_train == 0:
             self.current_experiments += 1
+            print('reinitialization')
+            print(self.model.trainable_variables[0][0,0,0,0,:8])
             self.model.reinitialize()
+            print(self.model.trainable_variables[0][0,0,0,0,:8])
             self.model.reg_fn.alpha.assign(self.alpha_range[self.current_experiments])
 
 class FlowSizeStop(tf.keras.callbacks.Callback):

@@ -87,14 +87,10 @@ class MeanABError(tf.keras.losses.Loss):
         super(MeanABError, self).__init__(name=name, **kwargs)
         self.A = A
         self.B = B
-        if normalization_fn is None:
-            self.normalization_fn = lambda flownu,finit: 1.
-        else:
-            self.normalization_fn = normalization_fn
-        if normalization_nu_fn is None:
-            self.normalization_nu_fn = lambda flownu, finit: 1.
-        else:
-            self.normalization_nu_fn = normalization_nu_fn
+
+        self.normalization_fn = normalization_fn
+
+        self.normalization_nu_fn = normalization_nu_fn
         self.cutoff = cutoff
 
     @tf.function

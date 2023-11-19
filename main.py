@@ -34,7 +34,7 @@ except:
 try:
     TEST =  int(sys.argv[3])
 except:
-    TEST = 0
+    TEST = 1
 
 if __name__ == '__main__':
 
@@ -44,10 +44,10 @@ if __name__ == '__main__':
         # 'S5W1_sanity_check',
         # 'S15G1W1_light_noBeta_baseline',
         # 'S15G2W1_light_noBeta_baseline',
-        'S15G3W1_light_noBeta_baseline',
-        # 'S15G1W1_light_noBeta_normalized',
+        # 'S15G3W1_light_noBeta_baseline',
+        'S15G1W1_light_noBeta_normalized',
         # 'S15G2W1_light_noBeta_normalized',
-        'S15G3W1_light_noBeta_normalized',
+        # 'S15G3W1_light_noBeta_normalized',
 
     ]
 
