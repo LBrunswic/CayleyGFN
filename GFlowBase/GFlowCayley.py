@@ -210,23 +210,7 @@ class MultiGFlowCayleyLinear(tf.keras.Model):
         self.update_init_flow()
 
     def evaluate(self, **kwargs):
-        a,b = self.FlowEstimator.check(self.backward_edges[:, :, 0:1])
-        # self.logger.debug('HEAD'+str(a.shape)+str(b.shape))
-        # self.logger.debug('HEAD'+str(tf.reduce_sum(b[0,0,:,:,:],axis=1).numpy())
-        # )
-        print('EVAL')
-        for m in self.metrics:
-            print()
-
-            print(m.name)
-            print(m.result())
-        for var in self.trainable_variables:
-            if tf.reduce_any(tf.math.is_nan(var)):
-                print('NAN ALLERT:',var.name)
-                raise
-
         return {m.name: tf.broadcast_to(m.result(),(self.ncopy,)) for m in self.metrics}
-
     # @tf.function
     def initflow_estimate(self):
         return tf.math.exp(self.initial_flow)*self.ref_initflow

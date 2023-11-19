@@ -7,7 +7,7 @@ from GFlowBase.GFlowCayley import  MultiGFlowCayleyLinear
 from GFlowBase.losses import MeanABError,Apower, Bpower,cutoff_fns
 from GFlowBase.rewards import Reward
 from GFlowBase.regularization import reg_post_choices,reg_fn_gen_choices
-from TestingEnv import ReplayBuffer,FlowSizeStop,fn_alpha_tune,metrics,PandasRecord
+from TestingEnv import ReplayBuffer,FlowSizeStop,fn_alpha_tune,metrics,PandasRecord,MemoryUse
 import tensorflow as tf
 from datetime import datetime
 from time import time
@@ -22,6 +22,8 @@ from logger_config import log_dict,log_tensorlist
 def train_test_model(hparams,logger):
     logger.info('CALL TRAIN')
     tf.random.set_seed(hparams['seed'])
+
+
     group_dtype = hparams['group_dtype']
     # hparams.update({'group_dtype' : group_dtype})
     G = Symmetric(
@@ -92,7 +94,22 @@ def train_test_model(hparams,logger):
         for i in range(len(all_alpha)//hparams['pool_size'])
     ]
     assert(all([len(x) ==hparams['pool_size'] for x in alpha_range]))
-    Replay = ReplayBuffer()
+    seeded_uniform = tf.random.stateless_uniform(
+        (hparams['epochs'], hparams['grad_batch_size'], hparams['batch_size'], hparams['length_cutoff'] - 1,1),
+        (hparams['seed'], hparams['seed']),
+        dtype='float32'
+    )
+    seeded_initial = flow.graph.sample(
+        shape=(hparams['epochs'], hparams['grad_batch_size'], hparams['batch_size'],1),
+        axis=-2
+    )
+
+    Replay = ReplayBuffer(
+        epoch_per_train=hparams['epochs'],
+        seeded_uniform=seeded_uniform,
+        seeded_initial=seeded_initial,
+        pool_size=hparams['pool_size'],
+    )
     callback_alpha_tune = fn_alpha_tune['fn_alpha_tune_grid'](
         epoch_per_train=hparams['epochs'],
         alpha_range=alpha_range,
@@ -100,7 +117,7 @@ def train_test_model(hparams,logger):
     )
     pandas_record = PandasRecord(hparams,alpha_range,epoch_period=hparams['epochs'])
     Replay.reward = reward_fn
-
+    memory_use = MemoryUse()
     for m in metrics:
         flow.metric_list.append(m(nflow=hparams['pool_size']))
 
@@ -126,7 +143,9 @@ def train_test_model(hparams,logger):
                                            # write_steps_per_second=True,
                                            # ),
             callback_alpha_tune,
+            memory_use
         ]
+
     )
     logger.debug('results: %s' % str(pandas_record.results))
     logger.info('END TRAIN')

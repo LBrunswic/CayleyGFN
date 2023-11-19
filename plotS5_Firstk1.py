@@ -15,10 +15,10 @@ import os
 
 timestamp = datetime.now()
 
-DATA_FOLDER = 'data_monopool'
+DATA_FOLDER = 'RESULTS'
 print(os.listdir(DATA_FOLDER))
 # DATA_FOLDER = 'data'
-OUTFOLDER = 'images/monopool'
+OUTFOLDER = 'images/new'
 # OUTFOLDER = 'images/best'
 
 # FOLDER = 'data'

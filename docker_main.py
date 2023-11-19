@@ -16,7 +16,7 @@ experiments_hparams = {
     'EXPERIMENT_ID':'1',
 
     'profile':True,
-    'N_SAMPLE': 20,
+    'N_SAMPLE': 3200,
 
     'seed': 9220,
 
@@ -57,8 +57,8 @@ experiments_hparams = {
     'normalization_fn': 0,
     'normalization_nu_fn': 0,
     'group_dtype': 'float32',
-    'reg_fn_alpha': (5, 10),
-    'pool_size': 10,
+    'reg_fn_alpha': (-20, 20),
+    'pool_size': 32,
 }
 
 
@@ -71,6 +71,6 @@ logger = get_logger(
 result, returns, flow = train_test_model(experiments_hparams, logger)
 data_save = os.path.join(
     'RESULTS',
-    experiments_hparams['EXPERIMENT_ID'].csv
+    experiments_hparams['EXPERIMENT_ID']+'.csv'
 )
 result.to_csv(data_save)

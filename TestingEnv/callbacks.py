@@ -38,45 +38,51 @@ class PandasRecord(tf.keras.callbacks.Callback):
         self.results = pandas.DataFrame(concat_dict_of_ndarray(self.results))
 
 class ReplayBuffer(tf.keras.callbacks.Callback):
-    def __init__(self, monitor="ReplayBuffer", folder='Knowledge',epochs=10):
+    def __init__(self, seeded_uniform=None,seeded_initial=None, pool_size=1,monitor="ReplayBuffer", folder='Knowledge',epoch_per_train=10):
         super().__init__()
         self.folder = folder
         self.episode_memory = []
-        self.epochs = epochs
+        self.epoch_per_train = epoch_per_train
+        self.pool_size = pool_size
+        self.seeded_uniform = tf.Variable(seeded_uniform,trainable=False)
+        self.seeded_initial = tf.Variable(seeded_initial,trainable=False)
 
 
     def on_train_begin(self, logs=None):
         self.compile_update_training_distribution()
+
 
     # def on_epoch_end(self, epoch, logs=None):
     #     print('ReplayBuffer', self.model.evaluate()['EMaxSeenRew'])
     def on_epoch_begin(self, epoch, logs=None):
 
         def schedule(epoch):
-            if epoch%self.epochs == 0:
+            if epoch%self.epoch_per_train == 0:
                 return (0., 1.)
-            elif epoch%self.epochs < 6:
+            elif epoch%self.epoch_per_train < 6:
                 return (0.90, 0.1)
             else:
                 return (0.99, 0.01)
-        self.update_training_distribution_callback()
+        self.update_training_distribution_callback(epoch)
         self.model.update_flow_init(schedule(epoch))
 
+
     @tf.function
-    def update_training_distribution_callback_aux(self, initial):
+    def update_training_distribution_callback_aux(self, initial,seeded_uniform):
         print('RECOMPILE UPDATE',initial.shape)
         for j in tf.range(self.model.grad_batch_size):
-            seeded_uniform = tf.random.uniform(
-                shape=(self.model.batch_size, self.model.path_length - 1, self.model.ncopy), dtype='float32')
             true_paths, embedded_paths = self.gen_path_model(
-                tf.concat([seeded_uniform, tf.cast(initial[j], 'float32')], axis=1))
+                tf.concat([seeded_uniform[j], tf.cast(initial[j], 'float32')], axis=1))
             self.model.paths_true[j].assign(true_paths)
             self.model.paths[j].assign(embedded_paths)
             self.model.update_training_distribution_gflow()
 
-    def update_training_distribution_callback(self):
-        initial = self.model.graph.sample(shape=(self.model.grad_batch_size, self.model.batch_size, self.model.ncopy), axis=-2)
-        self.update_training_distribution_callback_aux(initial)
+    def update_training_distribution_callback(self,epoch):
+        initial = self.seeded_initial[epoch%self.epoch_per_train]
+        initial = tf.broadcast_to(initial,(*initial.shape[:-1], self.pool_size) )
+        seeded_uniform = self.seeded_uniform[epoch%self.epoch_per_train]
+        seeded_uniform = tf.broadcast_to(seeded_uniform, (*seeded_uniform.shape[:-1], self.pool_size))
+        self.update_training_distribution_callback_aux(initial, seeded_uniform)
 
 
 
@@ -166,6 +172,13 @@ class FlowSizeStop(tf.keras.callbacks.Callback):
         return monitor_value
 
 
+class MemoryUse(tf.keras.callbacks.Callback):
+    def on_epoch_end(self, epoch, logs=None):
+        if tf.config.list_physical_devices('GPU'):
+          print(tf.config.experimental.get_memory_info('GPU:0'))
+
+
 fn_alpha_tune = {
     'fn_alpha_tune_grid' : fn_alpha_tune_grid
 }
+
