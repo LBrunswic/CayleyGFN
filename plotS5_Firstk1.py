@@ -12,7 +12,6 @@ import os
 #sns.set_theme(style="darkgrid")
 
 
-
 timestamp = datetime.now()
 
 DATA_FOLDER = 'RESULTS'

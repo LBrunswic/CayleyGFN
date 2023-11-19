@@ -20,6 +20,8 @@ parser.add_argument('EXPERIMENT_ID', default='1', type=str)
 parser.add_argument('seed', default=9220, type=int)
 args = parser.parse_args().__dict__
 
+
+
 experiments_hparams = {
     'profile':True,
     'N_SAMPLE': 32,
