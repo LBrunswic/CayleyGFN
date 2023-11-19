@@ -3,7 +3,7 @@ ARG GIT_REPO=CayleyGFN
 ARG GIT_SERVER=node1/git
 ARG GIT_HASH=latest
 RUN mkdir TASK
-ADD --keep-git-dir=true http://$GIT_SERVER/$GIT_REPO TASK
+RUN git clone http://$GIT_SERVER/$GIT_REPO TASK
 WORKDIR /TASK
 RUN git config  --global --add advice.detachedHead false
 RUN git config --global --add safe.directory /TASK && if [ $GIT_HASH != 'latest' ]; then git checkout $GIT_HASH;fi
