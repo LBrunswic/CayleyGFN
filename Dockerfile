@@ -2,8 +2,6 @@ FROM tensorflow:tf14
 ARG GIT_REPO=CayleyGFN
 ARG GIT_SERVER=node1/git
 ARG GIT_HASH=latest
-ARG seed=9220
-ARG
 RUN mkdir TASK
 RUN git clone http://$GIT_SERVER/$GIT_REPO TASK
 WORKDIR /TASK
