@@ -30,8 +30,9 @@ class PandasRecord(tf.keras.callbacks.Callback):
             if isinstance(res[key],list):
                 res[key] = np.array(res[key])
             if len(res[key].shape)>1:
-                print(key,res[key].shape)
-                print(res[key])
+                pass
+                # print(key,res[key].shape)
+                # print(res[key])
         self.results.append(res)
     def on_train_end(self, logs=None):
 
@@ -175,7 +176,7 @@ class FlowSizeStop(tf.keras.callbacks.Callback):
 class MemoryUse(tf.keras.callbacks.Callback):
     def on_train_end(self, epoch, logs=None):
         if tf.config.list_physical_devices('GPU'):
-          print(tf.config.experimental.get_memory_info('GPU:0'))
+          print(tf.config.experimental.get_memory_info('GPU:0')['peak']//2**20)
 
 
 fn_alpha_tune = {

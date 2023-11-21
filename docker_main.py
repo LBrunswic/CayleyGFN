@@ -1,71 +1,66 @@
+import argparse
+parser = argparse.ArgumentParser(
+                    prog='CayleyGFN',
+                    description='Launch a unit experiment',
+)
+parser.add_argument(
+    '--hp_file',
+    type=str,
+    default='Hyperparameters/experimental_settings/base_test.hp',
+    help='Provide the experimental setting file, If not provided, defaults to base_test.hp'
+)
+
+parser.add_argument(
+    '--pool_size',
+    type=int,
+    default=32,
+    help='Set the experiment pool size, the effect of results is small ans is inly intended to improve efficiency',
+)
+parser.add_argument(
+    '--memory',
+    type=int,
+    default=-1,
+    help='Non positive value activate memory growth. Positive values set the actual GPU memory limit in MB'
+)
+args = parser.parse_args().__dict__
 
 import tensorflow as tf
-# gpus = tf.config.list_physical_devices('GPU')
-# tf.config.experimental.set_memory_growth(gpus[0], True)
+gpus = tf.config.list_physical_devices('GPU')
+if gpus:
+    if args['memory'] >0:
+        tf.config.set_logical_device_configuration(
+            tf.config.list_physical_devices('GPU')[0],
+            [tf.config.LogicalDeviceConfiguration(memory_limit=args['memory'])])
+    else:
+        tf.config.experimental.set_memory_growth(gpus[0], True)
+import pickle
+import hashlib
 
 import os, sys
 from datetime import datetime
+from time import time
 from train import train_test_model
 from logger_config import get_logger, log_dict
-import argparse
 
-
-
-experiments_hparams = {
-    'profile':True,
-    'N_SAMPLE': 32*1,
-    'graph_size': 15,
-    'graph_generators': 'trans_cycle_a',
-    'inverse': True,
-    'initial_pos': 'SymmetricUniform',
-    'rew_fn': 'TwistedManhattan',
-    'rew_param': {'width': 1, 'scale': -100, 'exp': False, 'mini': 0.0},
-    'reg_proj': 'OrthReg',
-    'reg_fn_logmin': 5.0,
-    'grad_batch_size': 1,
-    'batch_size': 1024,
-    'length_cutoff': 30,
-    'initial_flow': 0.001,
-    'learning_rate': 0.002,
-    'epochs': 10,
-    'step_per_epoch': 5,
-    'B_beta': -1000.0,
-    'path_redraw': 0,
-    'neighborhood': 0,
-    'flowestimator_opt': {
-        'options': {'kernel_depth': 2, 'width': 64, 'final_activation': 'linear'},
-        'kernel_options': {'kernel_initializer': 'Orthogonal', 'activation': 'tanh', 'implementation': 1}},
-    'embedding': ('cos', 'sin', 'natural'),
-    'optimizer': 'Adam',
-    'loss_base': 'Apower',
-    'loss_alpha': 2.0,
-    'rew_factor': 1.0,
-    'heuristic_fn': 'R_zero',
-    'heuristic_param': {},
-    'heuristic_factor': 0.0,
-    'reward_rescale': 'Trivial',
-    'reg_fn_gen': 'norm2',
-    'loss_cutoff': 'none',
-    'lr_schedule': 'none',
-    'reg_fn_alpha_schedule': 'none',
-    'normalization_fn': 0,
-    'normalization_nu_fn': 0,
-    'group_dtype': 'float32',
-    'reg_fn_alpha': (-20, 20),
-    'pool_size': 32,
-    'seed' : 12334,
-}
-
+with open(args['hp_file'],'br') as f:
+    experiments_hparams = pickle.load(f)
+    hash = hashlib.sha256(bytes(str(experiments_hparams), 'utf8')).hexdigest()+ ('_%s'%args['pool_size'])
+    experiments_hparams.update(
+        {'pool_size':args['pool_size']}
+    )
 
 experiments_hparams['logdir'] = 'LOGS'
 logger = get_logger(
-    name=experiments_hparams['EXPERIMENT_ID'],
-    filename=os.path.join(experiments_hparams['logdir'], experiments_hparams['EXPERIMENT_ID'] + '.log'),
+    name=hash,
+    filename=os.path.join(experiments_hparams['logdir'], hash + '.log'),
     filemode='w'
 )
+T = time()
 result, returns, flow = train_test_model(experiments_hparams, logger)
 data_save = os.path.join(
     'RESULTS',
-    experiments_hparams['EXPERIMENT_ID']+'_'+str(experiments_hparams['seed'])+'.csv'
+    hash+'.csv'
 )
 result.to_csv(data_save)
+dt = (time()-T)/3600
+logger.info(f"{experiments_hparams['N_SAMPLE']} experiments done in { (time()-T)/60} minutes. So {experiments_hparams['N_SAMPLE']/dt} experiments per hours.")
