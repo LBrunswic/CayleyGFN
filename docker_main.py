@@ -11,20 +11,9 @@ import argparse
 
 
 
-parser = argparse.ArgumentParser(
-                    prog='CayleyGFN',
-                    description='Launch a unit experiment',
-)
-
-parser.add_argument('EXPERIMENT_ID', default='1', type=str)
-parser.add_argument('seed', default=9220, type=int)
-args = parser.parse_args().__dict__
-
-
-
 experiments_hparams = {
     'profile':True,
-    'N_SAMPLE': 32,
+    'N_SAMPLE': 32*1,
     'graph_size': 15,
     'graph_generators': 'trans_cycle_a',
     'inverse': True,
@@ -38,13 +27,13 @@ experiments_hparams = {
     'length_cutoff': 30,
     'initial_flow': 0.001,
     'learning_rate': 0.002,
-    'epochs': 100,
+    'epochs': 10,
     'step_per_epoch': 5,
     'B_beta': -1000.0,
     'path_redraw': 0,
     'neighborhood': 0,
     'flowestimator_opt': {
-        'options': {'kernel_depth': 1, 'width': 32, 'final_activation': 'linear'},
+        'options': {'kernel_depth': 2, 'width': 64, 'final_activation': 'linear'},
         'kernel_options': {'kernel_initializer': 'Orthogonal', 'activation': 'tanh', 'implementation': 1}},
     'embedding': ('cos', 'sin', 'natural'),
     'optimizer': 'Adam',
@@ -64,7 +53,7 @@ experiments_hparams = {
     'group_dtype': 'float32',
     'reg_fn_alpha': (-20, 20),
     'pool_size': 32,
-    **args,
+    'seed' : 12334,
 }
 
 

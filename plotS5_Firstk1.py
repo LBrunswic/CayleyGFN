@@ -14,10 +14,10 @@ import os
 
 timestamp = datetime.now()
 
-DATA_FOLDER = 'RESULTS'
+DATA_FOLDER = 'RESULTS/node1_32/Results'
 print(os.listdir(DATA_FOLDER))
 # DATA_FOLDER = 'data'
-OUTFOLDER = 'images/new'
+OUTFOLDER = 'images/new_node1'
 # OUTFOLDER = 'images/best'
 
 # FOLDER = 'data'
@@ -35,8 +35,11 @@ os.makedirs(OUTFOLDER,exist_ok=True)
 
 
 
-def load_data(FOLDER):
-    FILES = [os.path.join(FOLDER, x) for x in os.listdir(FOLDER)]
+def load_data(FOLDER,FILES=None):
+    if FILES is None:
+        FILES = [os.path.join(FOLDER, x) for x in os.listdir(FOLDER)]
+    else:
+        FILES = [os.path.join(FOLDER, x) for x in FILES]
     data = []
     for filename in FILES:
         data.append(pandas.read_csv(filename))
@@ -45,6 +48,7 @@ def load_data(FOLDER):
     return data
 print('LOADING DATA...',end='')
 data = load_data(DATA_FOLDER)
+print(data)
 print('DONE!')
 
 def data_get(filter, data):
@@ -275,7 +279,7 @@ for omega in normalization_filters:
                 'S%sG%sW1F1_EMaxSeenRew_%s_%s' % (graph_filter['graph_size'],graph_filter['graph_generators'],omega,nu),
                 data_here=data1,
                 # y_range = (0,1,0.05,np.exp(1)),
-                comparison=['normalization_fn','normalization_nu_fn','reg_fn_gen','reg_proj'],
+                comparison=['normalization_fn','normalization_nu_fn','reg_fn_gen','reg_proj','seed'],
                 preTTT=groupTTT(epsilon=0.5)
             )
             # make_graph(
@@ -320,7 +324,7 @@ for omega in normalization_filters:
                 'S%sG%sW1F1_BestEMaxSeenRew_%s_%s' % (graph_filter['graph_size'],graph_filter['graph_generators'],omega,nu),
                 data_here=data1,
                 # y_range = (0,1,0.05,np.exp(1)),
-                comparison=['normalization_fn','normalization_nu_fn','reg_fn_gen','reg_proj'],
+                comparison=['normalization_fn','normalization_nu_fn','reg_fn_gen','reg_proj','seed'],
                 # preTTT=groupTTT(epsilon=0.5)
             )
             # make_graph(

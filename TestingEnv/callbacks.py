@@ -173,7 +173,7 @@ class FlowSizeStop(tf.keras.callbacks.Callback):
 
 
 class MemoryUse(tf.keras.callbacks.Callback):
-    def on_epoch_end(self, epoch, logs=None):
+    def on_train_end(self, epoch, logs=None):
         if tf.config.list_physical_devices('GPU'):
           print(tf.config.experimental.get_memory_info('GPU:0'))
 
