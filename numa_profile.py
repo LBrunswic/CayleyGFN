@@ -3,7 +3,7 @@ import time
 import numpy as np
 N_ATTEMPTS = 1
 N_CPU = 32
-RESULTS_FILE = 'numa_profile.npy'
+RESULTS_FILE = 'numa_profile_%s.npy' % time.time()
 results = np.zeros((N_CPU,N_ATTEMPTS))
 for cpu in range(N_CPU):
     for attempt in range(N_ATTEMPTS):
