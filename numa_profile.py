@@ -1,7 +1,7 @@
 import os
 import time
 import numpy as np
-N_ATTEMPTS = 10
+N_ATTEMPTS = 1
 N_CPU = 32
 RESULTS_FILE = 'numa_profile.npy'
 results = np.zeros((N_CPU,N_ATTEMPTS))
