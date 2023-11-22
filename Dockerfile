@@ -18,4 +18,6 @@ RUN chown -R 1000:1000 /TASK
 #RUN chown -R 1000:1000 /TASK/MODELS
 #RUN chown -R 1000:1000 /TASK/RESULTS
 USER 1000:1000
-CMD python3 docker_main.py
+RUN cd Hyperparameters && python3 generate.py && python3 generate2.py
+#CMD python3 docker_main.py
+ENTRYPOINT bash
