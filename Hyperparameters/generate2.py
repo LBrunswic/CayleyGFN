@@ -58,7 +58,7 @@ os.makedirs(FOLDER_BASE,exist_ok=True)
 os.makedirs(FOLDER_BASE+'_cpu',exist_ok=True)
 variable_hp_names = list(VARIANLE_HP.keys())
 
-cases = itertools.product(*[VARIANLE_HP[variable_hp_name] for variable_hp_name in variable_hp_names])
+cases = list(itertools.product(*[VARIANLE_HP[variable_hp_name] for variable_hp_name in variable_hp_names]))
 N_CPU = int(CPU_FRACTION*len(cases))
 for i,case in enumerate(cases):
     hp_set = dict(zip(variable_hp_names,case))
