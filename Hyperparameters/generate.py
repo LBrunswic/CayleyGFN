@@ -22,7 +22,7 @@ FIXED_HP = {
     'path_redraw': 0,
     'neighborhood': 0,
     'flowestimator_opt': {
-        'options': {'kernel_depth': 2, 'width': 64, 'final_activation': 'linear'},
+        'options': {'kernel_depth': 2, 'width': 32, 'final_activation': 'linear'},
         'kernel_options': {'kernel_initializer': 'Orthogonal', 'activation': 'tanh', 'implementation': 1}},
     'optimizer': 'Adam',
     'loss_base': 'Apower',
@@ -47,8 +47,8 @@ VARIANLE_HP = {
     'batch_size': [1024],
     'step_per_epoch': [5],
     'length_cutoff': [30],
-    'embedding': [('cos', 'sin', 'natural'),('cos', 'sin')],
-    'loss_alpha': [2.0,1.1,2.5],
+    'embedding': [('cos', 'sin', 'natural')],
+    'loss_alpha': [2.0],
 }
 
 print(os.listdir())
@@ -70,4 +70,4 @@ hash = hashlib.sha256(bytes(str(hp_set),'utf8')).hexdigest()
 with open(os.path.join(FOLDER,'base_test.hp'), 'wb') as f:
     pickle.dump(hp_set,f)
 
-print('Estimated time:', len(list(itertools.product(*[VARIANLE_HP[variable_hp_name] for variable_hp_name in variable_hp_names])))*3200/30000/24)
+print('Estimated time:', len(list(itertools.product(*[VARIANLE_HP[variable_hp_name] for variable_hp_name in variable_hp_names])))*3200/2000/24)

@@ -307,48 +307,48 @@ for omega in normalization_filters:
 
             print('DONE!')
 
-
-for omega in normalization_filters:
-    for nu in normalization_nu_filters:
-        for graph_filter in graph_filters:
-            print('MAKE GRAPH...',omega,nu,graph_filter, end='')
-            FILTER = concat_filters([{'normalization_fn':omega},{'normalization_nu_fn':nu},base_filter,graph_filter,NoBETA,REWARD_RESCALE[0],reward_filters[0],train_filter['long']])
-            data1 = data_get_best(FILTER,data, x='reg_fn_alpha',y='EMaxSeenRew')
-            if len(data1)==0:
-                print('None')
-                continue
-            make_graph(
-                'reg_fn_alpha',
-                'EMaxSeenRew',
-                r'\gamma',
-                'S%sG%sW1F1_BestEMaxSeenRew_%s_%s' % (graph_filter['graph_size'],graph_filter['graph_generators'],omega,nu),
-                data_here=data1,
-                # y_range = (0,1,0.05,np.exp(1)),
-                comparison=['normalization_fn','normalization_nu_fn','reg_fn_gen','reg_proj','seed'],
-                # preTTT=groupTTT(epsilon=0.5)
-            )
-            # make_graph(
-            #     'reg_fn_alpha',
-            #     'FlowSize',
-            #     r'\gamma',
-            #     'S%sG%sW1F1_BestFlowSize_%s_%s' % (
-            #     graph_filter['graph_size'], graph_filter['graph_generators'], omega, nu),
-            #     data_here=data1,
-            #     y_range = (-10,10,2,1.),
-            #     comparison=['normalization_fn', 'normalization_nu_fn', 'reg_fn_gen', 'reg_proj'],
-            #     log_scale=True,
-            # )
-            # make_graph(
-            #     'reg_fn_alpha',
-            #     'ExpectedLength',
-            #     r'\gamma',
-            #     'S%sG%sW1F1_BestExpectedLength_%s_%s' % (
-            #     graph_filter['graph_size'], graph_filter['graph_generators'], omega, nu),
-            #     data_here=data1,
-            #     y_range = (0,30,2,1.),
-            #     comparison=['normalization_fn', 'normalization_nu_fn', 'reg_fn_gen', 'reg_proj'],
-            #     # p
-            # )
-
-            print('DONE!')
+#
+# for omega in normalization_filters:
+#     for nu in normalization_nu_filters:
+#         for graph_filter in graph_filters:
+#             print('MAKE GRAPH...',omega,nu,graph_filter, end='')
+#             FILTER = concat_filters([{'normalization_fn':omega},{'normalization_nu_fn':nu},base_filter,graph_filter,NoBETA,REWARD_RESCALE[0],reward_filters[0],train_filter['long']])
+#             data1 = data_get_best(FILTER,data, x='reg_fn_alpha',y='EMaxSeenRew')
+#             if len(data1)==0:
+#                 print('None')
+#                 continue
+#             make_graph(
+#                 'reg_fn_alpha',
+#                 'EMaxSeenRew',
+#                 r'\gamma',
+#                 'S%sG%sW1F1_BestEMaxSeenRew_%s_%s' % (graph_filter['graph_size'],graph_filter['graph_generators'],omega,nu),
+#                 data_here=data1,
+#                 # y_range = (0,1,0.05,np.exp(1)),
+#                 comparison=['normalization_fn','normalization_nu_fn','reg_fn_gen','reg_proj','seed'],
+#                 # preTTT=groupTTT(epsilon=0.5)
+#             )
+#             # make_graph(
+#             #     'reg_fn_alpha',
+#             #     'FlowSize',
+#             #     r'\gamma',
+#             #     'S%sG%sW1F1_BestFlowSize_%s_%s' % (
+#             #     graph_filter['graph_size'], graph_filter['graph_generators'], omega, nu),
+#             #     data_here=data1,
+#             #     y_range = (-10,10,2,1.),
+#             #     comparison=['normalization_fn', 'normalization_nu_fn', 'reg_fn_gen', 'reg_proj'],
+#             #     log_scale=True,
+#             # )
+#             # make_graph(
+#             #     'reg_fn_alpha',
+#             #     'ExpectedLength',
+#             #     r'\gamma',
+#             #     'S%sG%sW1F1_BestExpectedLength_%s_%s' % (
+#             #     graph_filter['graph_size'], graph_filter['graph_generators'], omega, nu),
+#             #     data_here=data1,
+#             #     y_range = (0,30,2,1.),
+#             #     comparison=['normalization_fn', 'normalization_nu_fn', 'reg_fn_gen', 'reg_proj'],
+#             #     # p
+#             # )
+#
+#             print('DONE!')
 raise
