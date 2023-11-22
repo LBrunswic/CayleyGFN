@@ -12,9 +12,14 @@ parser.add_argument(
     help=f'Provide the experimental setting file, If not provided, defaults to {FOLDER}'
 )
 
-
+args = parser.parse_args().__dict__
+FOLDER = args['HP_FOLDER']
 
 for hp_file_name in os.listdir(FOLDER):
     hp_file_path = os.path.join(FOLDER,hp_file_name)
-    os.system(f'python3 docker_main.py --pool_size=48 --hp_file={hp_file_path}')
+    hash = os.path.split(hp_file_path)[-1].split('.')[0]
+    data_save = os.path.join('RESULTS',hash + '.csv')
+    if not os.path.exists(data_save):
+        print(f'Launching {hp_file_path}')
+        os.system(f'python3 docker_main.py --pool_size=48 --hp_file={hp_file_path}')
 
