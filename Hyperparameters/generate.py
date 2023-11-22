@@ -6,7 +6,7 @@ import hashlib
 rng = np.random.default_rng(seed=12345)
 
 FIXED_HP = {
-    'N_SAMPLE': 32*100,
+    'N_SAMPLE': 32*20,
     'graph_size': 15,
     'graph_generators': 'trans_cycle_a',
     'inverse': True,
@@ -70,4 +70,4 @@ hash = hashlib.sha256(bytes(str(hp_set),'utf8')).hexdigest()
 with open(os.path.join(FOLDER,'base_test.hp'), 'wb') as f:
     pickle.dump(hp_set,f)
 
-print('Estimated time:', len(list(itertools.product(*[VARIANLE_HP[variable_hp_name] for variable_hp_name in variable_hp_names])))*3200/2000/24)
+print('Estimated time:', len(list(itertools.product(*[VARIANLE_HP[variable_hp_name] for variable_hp_name in variable_hp_names])))*FIXED_HP['N_SAMPLE']/2000/24)

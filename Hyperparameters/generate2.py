@@ -6,7 +6,7 @@ import hashlib
 rng = np.random.default_rng(seed=12345)
 
 FIXED_HP = {
-    'N_SAMPLE': 32*100,
+    'N_SAMPLE': 32*20,
     'graph_size': 15,
     'graph_generators': 'trans_cycle_a',
     'inverse': True,
@@ -22,7 +22,7 @@ FIXED_HP = {
     'path_redraw': 0,
     'neighborhood': 0,
     'flowestimator_opt': {
-        'options': {'kernel_depth': 2, 'width': 64, 'final_activation': 'linear'},
+        'options': {'kernel_depth': 2, 'width': 32, 'final_activation': 'linear'},
         'kernel_options': {'kernel_initializer': 'Orthogonal', 'activation': 'tanh', 'implementation': 1}},
     'optimizer': 'Adam',
     'loss_base': 'Apower',
@@ -62,7 +62,6 @@ for case in itertools.product(*[VARIANLE_HP[variable_hp_name] for variable_hp_na
     with open(os.path.join(FOLDER,hash+'.hp'), 'wb') as f:
         pickle.dump( hp_set,f)
 
-
 hp_set = dict(zip(variable_hp_names, case))
 hp_set.update(FIXED_HP)
 hp_set['N_SAMPLE'] = 8
@@ -71,4 +70,4 @@ hash = hashlib.sha256(bytes(str(hp_set),'utf8')).hexdigest()
 with open(os.path.join(FOLDER,'base_test.hp'), 'wb') as f:
     pickle.dump(hp_set,f)
 
-print('Estimated time:', len(list(itertools.product(*[VARIANLE_HP[variable_hp_name] for variable_hp_name in variable_hp_names])))*3200/7000/24)
+print('Estimated time:', len(list(itertools.product(*[VARIANLE_HP[variable_hp_name] for variable_hp_name in variable_hp_names])))*FIXED_HP['N_SAMPLE']/700/24)
