@@ -62,6 +62,7 @@ for case in itertools.product(*[VARIANLE_HP[variable_hp_name] for variable_hp_na
     with open(os.path.join(FOLDER,hash+'.hp'), 'wb') as f:
         pickle.dump( hp_set,f)
 
+
 hp_set = dict(zip(variable_hp_names, case))
 hp_set.update(FIXED_HP)
 hp_set['N_SAMPLE'] = 8
