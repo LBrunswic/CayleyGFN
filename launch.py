@@ -21,5 +21,5 @@ for hp_file_name in os.listdir(FOLDER):
     data_save = os.path.join('RESULTS',hash + '.csv')
     if not os.path.exists(data_save):
         print(f'Launching {hp_file_path}')
-        os.system(f'python3 docker_main.py --pool_size=48 --hp_file={hp_file_path}')
+        os.system(f'python3 docker_main.py --pool_size=32 --hp_file={hp_file_path}')
 
