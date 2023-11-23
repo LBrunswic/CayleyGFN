@@ -20,7 +20,7 @@ args = parser.parse_args().__dict__
 
 a =  np.load(args['profile_file'])
 print(a.shape)
-for pack in range(8):
+for pack in [3, 7, 31]:
     for attempt in range(2):
         plt.plot(np.arange(32),a[pack,:,attempt], label=f'pack={pack+1} attempt={attempt}')
         plt.legend(loc='right')

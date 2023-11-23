@@ -22,8 +22,8 @@ N_CPU = 32
 RESULTS_FILE = os.path.join('RESULTS','numa_profile_%s.npy' % time.time())
 results = np.zeros((32,N_CPU,N_ATTEMPTS))
 for attempt in range(N_ATTEMPTS):
-    for PACK in [4, 8, 32]:
-        for cpu in range(N_CPU-PACK):
+    for PACK in [32]:
+        for cpu in range(N_CPU-PACK+1):
             cpurange=f'{cpu}-{cpu+PACK-1}'
             T = time.time()
             os.system(f'numactl --physcpubind={cpurange} python3 docker_main.py > cpu_{cpurange}.log')
