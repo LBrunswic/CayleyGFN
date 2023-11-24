@@ -34,5 +34,5 @@ for hp_file_name in os.listdir(FOLDER):
     data_save = os.path.join('RESULTS',hash + '.csv')
     if not os.path.exists(data_save):
         print(f'Launching {hp_file_path}')
-        os.system(f"numactl --physcpubind={args['numactl']} python3 docker_main.py --pool_size={args['pool_size']} --hp_file={args['HP_FOLDER']}")
+        os.system(f"numactl --physcpubind={args['numactl']} python3 docker_main.py --pool_size={args['pool_size']} --hp_file={hp_file_path}")
 
