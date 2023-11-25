@@ -63,12 +63,12 @@ for case in itertools.product(*[VARIANLE_HP[variable_hp_name] for variable_hp_na
         pickle.dump( hp_set,f)
 
 
-hp_set = dict(zip(variable_hp_names, case))
-hp_set.update(FIXED_HP)
-hp_set['N_SAMPLE'] = 32
-hp_set['epochs'] = 3
-hash = hashlib.sha256(bytes(str(hp_set),'utf8')).hexdigest()
-with open(os.path.join(FOLDER,'base_test.hp'), 'wb') as f:
-    pickle.dump(hp_set,f)
+# hp_set = dict(zip(variable_hp_names, case))
+# hp_set.update(FIXED_HP)
+# hp_set['N_SAMPLE'] = 32
+# hp_set['epochs'] = 3
+# hash = hashlib.sha256(bytes(str(hp_set),'utf8')).hexdigest()
+# with open(os.path.join(FOLDER,'base_test.hp'), 'wb') as f:
+#     pickle.dump(hp_set,f)
 
 print('Estimated time:', len(list(itertools.product(*[VARIANLE_HP[variable_hp_name] for variable_hp_name in variable_hp_names])))*FIXED_HP['N_SAMPLE']/2000/24)
