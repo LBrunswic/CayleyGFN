@@ -19,7 +19,7 @@ parser.add_argument(
 parser.add_argument(
     '--memory',
     type=int,
-    default=-1,
+    default=0,
     help='Non positive value activate memory growth. Positive values set the actual GPU memory limit in MB'
 )
 args = parser.parse_args().__dict__
@@ -31,8 +31,11 @@ if gpus:
         tf.config.set_logical_device_configuration(
             tf.config.list_physical_devices('GPU')[0],
             [tf.config.LogicalDeviceConfiguration(memory_limit=args['memory'])])
-    else:
+    elif args['memory'] == 0:
         tf.config.experimental.set_memory_growth(gpus[0], True)
+    elif args['memory'] == -1:
+        pass
+
 import pickle
 import hashlib
 
