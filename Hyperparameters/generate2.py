@@ -7,7 +7,7 @@ rng = np.random.default_rng(seed=12345)
 
 CPU_FRACTION = 0.2
 FIXED_HP = {
-    'N_SAMPLE': 32*20,
+    'N_SAMPLE': 32*24,
     'graph_size': 15,
     'graph_generators': 'trans_cycle_a',
     'inverse': True,
