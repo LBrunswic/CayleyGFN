@@ -5,7 +5,7 @@ import os
 import hashlib
 rng = np.random.default_rng(seed=12345)
 
-FOLDER = 'experimental_settings_S20G2W1'
+FOLDER = 'experimental_settings_S15G3W1'
 
 FIXED_HP = {
     'N_SAMPLE': 32*6,
