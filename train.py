@@ -7,7 +7,7 @@ from GFlowBase.GFlowCayley import  MultiGFlowCayleyLinear
 from GFlowBase.losses import MeanABError,Apower, Bpower,cutoff_fns
 from GFlowBase.rewards import Reward
 from GFlowBase.regularization import reg_post_choices,reg_fn_gen_choices
-from TestingEnv import ReplayBuffer,FlowSizeStop,fn_alpha_tune,metrics,PandasRecord,MemoryUse, LogProgress
+from TestingEnv import ReplayBuffer,FlowSizeStop,fn_alpha_tune,metrics,PandasRecord,MemoryUse#, LogProgress
 import tensorflow as tf
 from datetime import datetime
 from time import time
@@ -144,7 +144,7 @@ def train_test_model(hparams,logger):
                                            # ),
             callback_alpha_tune,
             memory_use,
-            LogProgress(logger)
+            # LogProgress(logger)
         ]
 
     )
