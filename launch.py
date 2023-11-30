@@ -13,10 +13,17 @@ parser.add_argument(
 )
 parser.add_argument(
     '--pool_size',
-    type=str,
+    type=int,
     default=32,
     help=f'Set the experiment pool size, the effect of results is small ans is simply intended to improve efficiency'
 )
+parser.add_argument(
+    '--gpu',
+    type=int,
+    default=0,
+    help=f'Set GPU used for the experiment'
+)
+
 
 args = parser.parse_args().__dict__
 
@@ -27,5 +34,5 @@ for hp_file_name in os.listdir(FOLDER):
     data_save = os.path.join('RESULTS',hash + '.csv')
     if not os.path.exists(data_save):
         print(f'Launching {hp_file_path}')
-        os.system(f"python3 docker_main.py --pool_size={args['pool_size']} --hp_file={hp_file_path}")
+        os.system(f"python3 docker_main.py --gpu={args['gpu']} --pool_size={args['pool_size']} --hp_file={hp_file_path}")
 

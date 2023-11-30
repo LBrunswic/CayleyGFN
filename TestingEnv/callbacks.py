@@ -179,6 +179,13 @@ class MemoryUse(tf.keras.callbacks.Callback):
           print(tf.config.experimental.get_memory_info('GPU:0')['peak']//2**20)
 
 
+class LogProgress(tf.keras.callbacks.Callback):
+    def __init__(self,logger):
+        super().__init__()
+        self.logger = logger
+    def on_epoch_end(self, epoch, logs=None):
+        self.logger.info('epoch %d' % (epoch, ))
+
 fn_alpha_tune = {
     'fn_alpha_tune_grid' : fn_alpha_tune_grid
 }
