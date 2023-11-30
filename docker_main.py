@@ -22,6 +22,14 @@ parser.add_argument(
     default=0,
     help='Non positive value activate memory growth. Positive values set the actual GPU memory limit in MB'
 )
+
+parser.add_argument(
+    '--gpu',
+    type=int,
+    default=0,
+    help='Not implemented yet'
+)
+
 args = parser.parse_args().__dict__
 
 import tensorflow as tf
