@@ -51,7 +51,7 @@ print('LOADING DATA...',end='')
 data = load_data(DATA_FOLDER)
 print(data)
 print('DONE!')
-
+raise
 
 def data_get(filter, data):
     data_here = pandas.DataFrame(data)

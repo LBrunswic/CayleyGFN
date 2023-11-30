@@ -26,7 +26,7 @@ parser.add_argument(
 
 
 args = parser.parse_args().__dict__
-
+FOLDER = args['HP_FOLDER']
 
 for hp_file_name in os.listdir(FOLDER):
     hp_file_path = os.path.join(FOLDER,hp_file_name)
