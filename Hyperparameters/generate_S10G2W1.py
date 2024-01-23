@@ -2,7 +2,7 @@ import numpy as np
 import itertools
 import pickle
 import os
-import hashlibgenerate_S15G2W1.py
+import hashlib
 rng = np.random.default_rng(seed=12345)
 
 FOLDER = 'experimental_settings_S15G2W1'
