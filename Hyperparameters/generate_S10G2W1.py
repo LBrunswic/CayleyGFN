@@ -9,7 +9,7 @@ FOLDER = 'experimental_settings_S15G2W1'
 
 FIXED_HP = {
     'N_SAMPLE': 32*6,
-    'graph_size': 15,
+    'graph_size': 10,
     'graph_generators': 'cycles_a',
     'inverse': True,
     'initial_pos': 'SymmetricUniform',

@@ -16,7 +16,7 @@ timestamp = datetime.now()
 DATA_FOLDER = '/home/maxbrain/DATA/TaskForce/Results/'
 print(os.listdir(DATA_FOLDER))
 # DATA_FOLDER = 'data'
-OUTFOLDER = 'images/seed_restricted'
+OUTFOLDER = 'images/AfterThai'
 # OUTFOLDER = 'images/best'
 
 # FOLDER = 'data'
@@ -51,7 +51,7 @@ print('LOADING DATA...',end='')
 data = load_data(DATA_FOLDER)
 print(data)
 print('DONE!')
-raise
+
 
 def data_get(filter, data):
     data_here = pandas.DataFrame(data)
@@ -310,6 +310,22 @@ for graph_filter in graph_filters:
         comparison=['normalization_fn','normalization_nu_fn','reg_fn_gen','reg_proj','embedding','loss_alpha','batch_size'],
         preTTT=probagroupTTT(epsilon=0.5)
                 )
+
+for graph_filter in graph_filters:
+    FILTER = concat_filters([KERNEL_OPT[0],base_filter,graph_filter,NoBETA,REWARD_RESCALE[0],reward_filters[0],train_filter['long']])
+    data1 = data_get(FILTER,data)
+    if len(data1)==0:
+        continue
+    make_graph(
+        'reg_fn_alpha',
+        'EMaxSeenRew',
+        r'\gamma',
+        'S%sG%sW1F1_agregated_success90_EMaxSeenRew_%s_%s' % (graph_filter['graph_size'],graph_filter['graph_generators'],'all','all'),
+        data_here=data1,
+        # y_range = (0,1,0.05,np.exp(1)),
+        comparison=['reg_fn_gen','reg_proj'],
+        preTTT=probagroupTTT(epsilon=0.5,success=0.9)
+    )
 
 for omega in normalization_filters:
     for nu in normalization_nu_filters:
