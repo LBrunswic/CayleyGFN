@@ -46,7 +46,7 @@ VARIANLE_HP = {
     'seed': list(rng.integers(1000, 10000, 128))[0:16],
     'normalization_fn': [0,1],
     'normalization_nu_fn': [0,3,5],
-    'batch_size': [1024],
+    'batch_size': [2048],
     'step_per_epoch': [5],
     'length_cutoff': [30],
     'embedding': [('cos', 'sin', 'natural')],
