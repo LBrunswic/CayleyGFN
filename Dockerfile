@@ -4,7 +4,7 @@ ARG GIT_SERVER=node1/git
 ARG GIT_HASH=latest
 RUN mkdir TASK
 #RUN echo "10.0.0.85   node1" >> /etc/hosts
-RUN git clone http://$GIT_SERVER/$GIT_REPO TASK
+#RUN git clone http://$GIT_SERVER/$GIT_REPO TASK
 WORKDIR /TASK
 RUN mkdir LOGS
 RUN mkdir RESULTS
