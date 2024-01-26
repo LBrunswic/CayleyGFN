@@ -16,7 +16,7 @@ timestamp = datetime.now()
 DATA_FOLDER = '/home/maxbrain/DATA/TaskForce/Results/'
 print(os.listdir(DATA_FOLDER))
 # DATA_FOLDER = 'data'
-OUTFOLDER = 'images/AfterThai'
+OUTFOLDER = 'images/reward_weigthing'
 # OUTFOLDER = 'images/best'
 
 # FOLDER = 'data'
@@ -233,7 +233,7 @@ REWARD_RESCALE = [
     {'reward_rescale' : 'ERew'}
 ]
 normalization_filters = [i for i in range(8)]
-normalization_nu_filters = [0,2]
+normalization_nu_filters = [0]
 
 train_filter = {
     'big_short' : {
@@ -280,7 +280,7 @@ def groupTTTlog(epsilon=0.5):
 
 # groupTTT = lambda epsilon: (lambda x:x)
 for graph_filter in graph_filters:
-    FILTER = concat_filters([KERNEL_OPT[0],base_filter,graph_filter,NoBETA,REWARD_RESCALE[0],reward_filters[0],train_filter['long']])
+    FILTER = concat_filters([{'normalization_fn':1},KERNEL_OPT[0],base_filter,graph_filter,NoBETA,REWARD_RESCALE[0],reward_filters[0],train_filter['long']])
     data1 = data_get(FILTER,data)
     if len(data1)==0:
         continue
@@ -292,9 +292,9 @@ for graph_filter in graph_filters:
         data_here=data1,
         # y_range = (0,1,0.05,np.exp(1)),
         comparison=['normalization_fn','normalization_nu_fn','reg_fn_gen','reg_proj','embedding','loss_alpha','batch_size'],
-        preTTT=probagroupTTT(epsilon=0.5)
+        # preTTT=probagroupTTT(epsilon=0.1)
                 )
-
+raise
 for graph_filter in graph_filters:
     FILTER = concat_filters([KERNEL_OPT[0],base_filter,graph_filter,NoBETA,REWARD_RESCALE[0],reward_filters[0],train_filter['long']])
     data1 = data_get(FILTER,data)
