@@ -5,7 +5,7 @@ import os
 import hashlib
 rng = np.random.default_rng(seed=12345)
 
-FOLDER = 'experimental_settings_S15G3W1'
+FOLDER = 'experimental_settings_S15G3W1_quick'
 
 FIXED_HP = {
     'N_SAMPLE': 64,
@@ -43,7 +43,7 @@ FIXED_HP = {
 VARIANLE_HP = {
     'reg_fn_gen': ['norm2','LogPathLen'],
     'reg_proj': ['OrthReg', 'AddReg'],
-    'seed': list(rng.integers(1000, 10000, 128))[24:40],
+    'seed': list(rng.integers(1000, 10000, 128))[40:56],
     'normalization_fn': [0,1],
     'normalization_nu_fn': [0,3,5],
     'batch_size': [512],
