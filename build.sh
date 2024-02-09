@@ -21,9 +21,9 @@ echo 'memory: '$memory
 echo 'laptop: '$laptop
 echo 'pool: '$pool
 RESULTS=${hpfile::-3}
-mkdir /home/maxbrain/DATA/TaskForce/Results/CayleyGFN/$RESULTS
-mkdir /home/maxbrain/DATA/TaskForce/logs/CayleyGFN/$RESULTS
-mkdir /home/maxbrain/DATA/TaskForce/Models/CayleyGFN/$RESULTS
+mkdir -v -p /home/maxbrain/DATA/TaskForce/Results/CayleyGFN/$RESULTS
+mkdir -v -p /home/maxbrain/DATA/TaskForce/logs/CayleyGFN/$RESULTS
+mkdir -v -p /home/maxbrain/DATA/TaskForce/Models/CayleyGFN/$RESULTS
 
 
 if [[ $build -eq 1 ]]; then
