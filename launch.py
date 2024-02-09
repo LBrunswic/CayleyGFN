@@ -4,12 +4,10 @@ parser = argparse.ArgumentParser(
                     prog='CayleyGFN',
                     description='Launch batch of experiment',
 )
-FOLDER = os.path.join('Hyperparameters','experimental_settings')
 parser.add_argument(
-    '--HP_FOLDER',
+    '--hp_gen_file',
     type=str,
-    default=FOLDER,
-    help=f'Provide the experimental setting file, If not provided, defaults to {FOLDER}'
+    help='Provide the experimental setting file'
 )
 parser.add_argument(
     '--pool_size',
@@ -24,9 +22,20 @@ parser.add_argument(
     help=f'Set GPU used for the experiment'
 )
 
+parser.add_argument(
+    '--gpu_memory',
+    type=int,
+    default=0,
+    help=f'Set GPU used for the experiment'
+)
+
 
 args = parser.parse_args().__dict__
-FOLDER = args['HP_FOLDER']
+FOLDER = 'HP'
+
+with open(args['hp_gen_file'],'r') as f:
+    exec(f.read())
+
 
 for hp_file_name in os.listdir(FOLDER):
     hp_file_path = os.path.join(FOLDER,hp_file_name)
@@ -35,4 +44,5 @@ for hp_file_name in os.listdir(FOLDER):
     if not os.path.exists(data_save):
         print(f'Launching {hp_file_path}')
         os.system(f"python3 docker_main.py --gpu={args['gpu']} --pool_size={args['pool_size']} --hp_file={hp_file_path}")
+
 
