@@ -13,12 +13,12 @@ import os
 
 
 timestamp = datetime.now()
-DATA_FOLDER = '/home/maxbrain/DATA/TaskForce/Results/CayleyGFN/AdamW'
+DATA_FOLDER = '/home/maxbrain/DATA/TaskForce/Results/CayleyGFN/Hyperparameters/generate_S15G3W1'
 print(os.listdir(DATA_FOLDER))
 # DATA_FOLDER = 'data'
-OUTFOLDER = 'images/AdamW-precise'
+OUTFOLDER = 'images/Hyperparameters/generate_S15G3W1'
 # OUTFOLDER = 'images/best'
-
+CMAP = None
 # FOLDER = 'data'
 os.makedirs(OUTFOLDER,exist_ok=True)
 
@@ -80,13 +80,10 @@ def make_graph(
     data_here = None,
     comparison = None,
     preTTT = lambda x:x,
-    cmap ='binary',
+    cmap = CMAP,
     y_range = (0,1,0.05,1),
     log_scale=False,
 ):
-    # data_here = data_get(filter,data)
-    # print(filter)
-    # print(data_here)
     data_here=pandas.DataFrame(data_here)
     data_here.insert(len(data_here.columns), title, [''] * len(data_here))
     if isinstance(comparison,list) and all([isinstance(x,str) for x in comparison]):
@@ -100,15 +97,12 @@ def make_graph(
     data_here = preTTT(data_here)
     print(data_here)
     plt.clf()
-    #sns.set_theme(style="darkgrid")
     if log_scale:
         extra = np.log10
     else:
         extra = lambda x:x
 
     data_here[y] = np.clip(extra(data_here[y].values)/y_range[3],y_range[0],y_range[1])
-    # data_here = data_here[data_here[x] >= -5]
-    # data_here = data_here[data_here[x] <= 5]
     f, axs = plt.subplots(nrows=1, ncols=1, figsize=(32, 18))
     print(data_here)
     a = sns.lineplot(
