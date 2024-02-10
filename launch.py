@@ -46,7 +46,7 @@ with open(args['hp_gen_file'],'r') as f:
 for hp_file_name in os.listdir(FOLDER):
     hp_file_path = os.path.join(FOLDER,hp_file_name)
     hash = os.path.split(hp_file_path)[-1].split('.')[0]
-    data_save = os.path.join('RESULTS',hash + '.csv')
+    data_save = os.path.join('RESULTS',f'{hash}_{args['pool_size']}.csv')
     if not os.path.exists(data_save):
         print(f'Launching {hp_file_path} -> {data_save}...')
         if args['test'] == 0:
