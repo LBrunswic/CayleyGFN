@@ -39,7 +39,7 @@ q
 args = parser.parse_args().__dict__
 FOLDER = 'HP'
 
-with open(args['hp_gen_file']cd,'r') as f:
+with open(args['hp_gen_file'],'r') as f:
     exec(f.read())
 
 
