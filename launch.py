@@ -34,7 +34,7 @@ parser.add_argument(
     default=0,
     help=f'Set test mode'
 )
-q
+
 
 args = parser.parse_args().__dict__
 FOLDER = 'HP'
