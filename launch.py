@@ -34,12 +34,12 @@ parser.add_argument(
     default=0,
     help=f'Set test mode'
 )
-
+q
 
 args = parser.parse_args().__dict__
 FOLDER = 'HP'
 
-with open(args['hp_gen_file'],'r') as f:
+with open(args['hp_gen_file']cd,'r') as f:
     exec(f.read())
 
 

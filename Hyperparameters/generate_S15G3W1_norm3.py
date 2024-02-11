@@ -8,7 +8,7 @@ rng = np.random.default_rng(seed=12345)
 FOLDER = 'HP'
 
 FIXED_HP = {
-    'N_SAMPLE': 256,
+    'N_SAMPLE': 32,
     'graph_size': 15,
     'graph_generators': 'transpositions',
     'inverse': True,
@@ -37,15 +37,15 @@ FIXED_HP = {
     'lr_schedule': 'none',
     'reg_fn_alpha_schedule': 'none',
     'group_dtype': 'float32',
-    'reg_fn_alpha': (-3, 6),
+    'reg_fn_alpha': (-40, 40),
 }
 
 VARIANLE_HP = {
     'reg_fn_gen': ['norm2','LogPathLen'],
     'reg_proj': ['OrthReg', 'AddReg'],
-    'seed': list(rng.integers(1000, 10000, 128))[0:16],
-    'normalization_fn': [0,1,3],
-    'normalization_nu_fn': [0,3,5],
+    'seed': list(rng.integers(1000, 10000, 128))[0:4],
+    'normalization_fn': [3],
+    'normalization_nu_fn': [0,1,2,3,4,5],
     'batch_size': [2048],
     'step_per_epoch': [50],
     'length_cutoff': [30],
