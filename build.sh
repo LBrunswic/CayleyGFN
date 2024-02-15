@@ -63,9 +63,10 @@ else
   -v /home/maxbrain/DATA/TaskForce/Results/CayleyGFN/$RESULTS:/TASK/RESULTS/ \
   -v /home/maxbrain/DATA/TaskForce/Models/CayleyGFN/$RESULTS:/TASK/MODELS/ \
   -v $hpfile:/TASK/hp_gen.py \
-  -v $laptop_clone:/TASK/laptop_clone.sh \
-  -v $launch:/TASK/launch.py cayleygfn \
-   python3 launch.py --prescript=laptop_clone.sh --hp_gen_file=hp_gen.py --gpu_memory=$memory --pool_size=$pool --test=$test &> gpu$gpu'_'$cpu.log \
+  -v $laptop_clone:/TASK/laptop_clone2.sh \
+  -v $launch:/TASK/launch2.py\
+   cayleygfn \
+   python3 launch2.py --prescript=laptop_clone2.sh --hp_gen_file=hp_gen.py --gpu_memory=$memory --pool_size=$pool --test=$test &> gpu$gpu'_'$cpu.log \
    & disown
 #  echo test & disown
 fi

@@ -19,7 +19,14 @@ def proj_reg(self, loss_gradients, reg_gradients):
 
 @tf.function
 def scaled_proj_reg(self, loss_gradients, reg_gradients, scaling=1e-1):
-    res = proj_reg(self,loss_gradients,scaling*tf.math.l2_normalize(reg_gradients)*tf.linalg.norm(loss_gradients))
+    n_train = self.n_train
+    res = [
+        loss_gradients[i]
+        + scaling * tf.linalg.norm(loss_gradients[i]) * tf.math.l2_normalize(
+            reg_gradients[i] - projection_orth(reg_gradients[i], loss_gradients[i])
+        )
+        for i in range(n_train)
+    ]
     return res
 
 
