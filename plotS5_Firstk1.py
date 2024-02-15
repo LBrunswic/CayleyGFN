@@ -13,25 +13,16 @@ import os
 
 
 timestamp = datetime.now()
-DATA_FOLDER = '/home/maxbrain/DATA/TaskForce/Results/CayleyGFN/Hyperparameters/generate_S15G3W1'
+DATA_FOLDER = '/home/maxbrain/DATA/TaskForce/Results/CayleyGFN/Hyperparameters/generate_S15G3W2_0_5'
 print(os.listdir(DATA_FOLDER))
 # DATA_FOLDER = 'data'
-OUTFOLDER = 'images/Hyperparameters/generate_S15G3W1'
+OUTFOLDER = 'images/Hyperparameters/generate_S15G3W2_0_5'
 # OUTFOLDER = 'images/best'
 CMAP = None
 # FOLDER = 'data'
 os.makedirs(OUTFOLDER,exist_ok=True)
 
-#   ___Definition des Graphes_________
-#   A. Problems
-#       GRAPH : S15
-#       GENERATORS : trans_cycle_a < cycles_a < transposition
-#       REWARDS = S15_TwistedManhattan_W1 , S15_TwistedManhattan_W2exp
-#   B. Embeddings
-#       light :  naturalrescaled + cos + sin
-#       linear : permutation matrix
-
-
+MAX_REWARD = 2
 
 
 def load_data(FOLDER,FILES=None):
@@ -292,12 +283,12 @@ def groupTTTlog(epsilon=0.5):
         data_copy['reg_fn_alpha'] =np.floor(data_copy['reg_fn_alpha'].values/epsilon)*epsilon
         return data_copy
     return aux
-#
+
 groupTTT = lambda epsilon: (lambda x:x)
 for reg_fn_gen in ['norm2','LogPathLen']:
-    for reg_proj in ['OrthReg','AddReg']:
+    for reg_proj in ['OrthReg','AddReg','ScaledOrthReg']:
         for graph_filter in graph_filters:
-            FILTER = concat_filters([{'reg_fn_gen':reg_fn_gen,'reg_proj':reg_proj},graph_filter,NoBETA,train_filter['precise'],reward_filters[0]])
+            FILTER = concat_filters([{'reg_fn_gen':reg_fn_gen,'reg_proj':reg_proj},graph_filter,NoBETA,train_filter['precise']])
             data1 = data_get(FILTER,data)
             if len(data1)==0:
                 continue
@@ -307,16 +298,55 @@ for reg_fn_gen in ['norm2','LogPathLen']:
                 r'\gamma',
                 'S%sG%sW1F1_EMaxSeenRew_%s_%s' % (graph_filter['graph_size'],graph_filter['graph_generators'],reg_proj,reg_fn_gen),
                 data_here=data1,
-                y_range = (0,1,0.1,np.exp(0)),
+                y_range = (0,MAX_REWARD,0.1,np.exp(0)),
                 comparison=['normalization_fn','normalization_nu_fn','reg_fn_gen','reg_proj','batch_size','step_per_epoch','epoch'],
                 # preTTT=probagroupTTT(epsilon=0.1)
                 # preTTT=probagroupTTT(epsilon=0.1, success=2400,value='MaxSeenRew')
                         )
+            data1 = data_get(FILTER,data)
+            if len(data1)==0:
+                continue
+            make_graph(
+                'reg_fn_alpha',
+                'ExpectedReward',
+                r'\gamma',
+                'S%sG%sW1F1_ExpectedReward_%s_%s' % (graph_filter['graph_size'],graph_filter['graph_generators'],reg_proj,reg_fn_gen),
+                data_here=data1,
+                y_range = (0,MAX_REWARD,0.1,np.exp(0)),
+                comparison=['normalization_fn','normalization_nu_fn','reg_fn_gen','reg_proj','batch_size','step_per_epoch','epoch'],
+                # preTTT=probagroupTTT(epsilon=0.1)
+                # preTTT=probagroupTTT(epsilon=0.1, success=2400,value='MaxSeenRew')
+                        )
+            data1 = data_get(FILTER, data)
+            make_graph(
+                'reg_fn_alpha',
+                'ExpectedLength',
+                r'\gamma',
+                'S%sG%sW1F1_ExpectedLength_%s_%s' % (graph_filter['graph_size'],graph_filter['graph_generators'],reg_proj,reg_fn_gen),
+                data_here=data1,
+                y_range = (0,30,1,np.exp(0)),
+                comparison=['normalization_fn','normalization_nu_fn','reg_fn_gen','reg_proj','batch_size','step_per_epoch','epoch'],
+                # preTTT=probagroupTTT(epsilon=0.1)
+                # preTTT=probagroupTTT(epsilon=0.1, success=2400,value='MaxSeenRew')
+                        )
+            data1 = data_get(FILTER, data)
+            make_graph(
+                'reg_fn_alpha',
+                'FlowSize',
+                r'\gamma',
+                'S%sG%sW1F1_FlowSize%s_%s' % (graph_filter['graph_size'],graph_filter['graph_generators'],reg_proj,reg_fn_gen),
+                data_here=data1,
+                y_range = (-3,3,0.5,np.exp(0)),
+                comparison=['normalization_fn','normalization_nu_fn','reg_fn_gen','reg_proj','batch_size','step_per_epoch','epoch'],
+                log_scale=True,
+                # preTTT=probagroupTTT(epsilon=0.1)
+                # preTTT=probagroupTTT(epsilon=0.1, success=2400,value='MaxSeenRew')
+                        )
 
-for normalization_fn in [0]:
-    for normalization_nu_fn in [5]:
+for normalization_fn in range(6):
+    for normalization_nu_fn in range(6):
         for graph_filter in graph_filters:
-            FILTER = concat_filters([{'normalization_fn':normalization_fn,'normalization_nu_fn':normalization_nu_fn},graph_filter,NoBETA,train_filter['precise'],reward_filters[0]])
+            FILTER = concat_filters([{'normalization_fn':normalization_fn,'normalization_nu_fn':normalization_nu_fn},graph_filter,NoBETA,train_filter['precise']])
             data1 = data_get(FILTER,data)
             if len(data1)==0:
                 print(normalization_fn,normalization_nu_fn)
@@ -327,7 +357,46 @@ for normalization_fn in [0]:
                 r'\gamma',
                 'S%sG%sW1F1_EMaxSeenRew_%s_%s' % (graph_filter['graph_size'],graph_filter['graph_generators'],normalization_fn,normalization_nu_fn),
                 data_here=data1,
-                y_range = (0,1,0.1,np.exp(0)),
+                y_range = (0,MAX_REWARD,0.1,np.exp(0)),
+                comparison=['normalization_fn','normalization_nu_fn','reg_fn_gen','reg_proj','batch_size','step_per_epoch','epoch'],
+                # preTTT=probagroupTTT(epsilon=0.1)
+                # preTTT=probagroupTTT(epsilon=0.1, success=2400,value='MaxSeenRew')
+                        )
+            data1 = data_get(FILTER, data)
+            make_graph(
+                'reg_fn_alpha',
+                'ExpectedLength',
+                r'\gamma',
+                'S%sG%sW1F1_ExpectedLength_%s_%s' % (graph_filter['graph_size'],graph_filter['graph_generators'],normalization_fn,normalization_nu_fn),
+                data_here=data1,
+                y_range = (0,30,1,np.exp(0)),
+                comparison=['normalization_fn','normalization_nu_fn','reg_fn_gen','reg_proj','batch_size','step_per_epoch','epoch'],
+                # preTTT=probagroupTTT(epsilon=0.1)
+                # preTTT=probagroupTTT(epsilon=0.1, success=2400,value='MaxSeenRew')
+                        )
+            data1 = data_get(FILTER, data)
+            make_graph(
+                'reg_fn_alpha',
+                'FlowSize',
+                r'\gamma',
+                'S%sG%sW1F1_FlowSize_%s_%s' % (graph_filter['graph_size'],graph_filter['graph_generators'],normalization_fn,normalization_nu_fn),
+                data_here=data1,
+                y_range = (-3,3,0.5,np.exp(0)),
+                comparison=['normalization_fn','normalization_nu_fn','reg_fn_gen','reg_proj','batch_size','step_per_epoch','epoch'],
+                log_scale=True,
+                # preTTT=probagroupTTT(epsilon=0.1)
+                # preTTT=probagroupTTT(epsilon=0.1, success=2400,value='MaxSeenRew')
+                        )
+            data1 = data_get(FILTER,data)
+            if len(data1)==0:
+                continue
+            make_graph(
+                'reg_fn_alpha',
+                'ExpectedReward',
+                r'\gamma',
+                'S%sG%sW1F1_ExpectedReward_%s_%s' % (graph_filter['graph_size'],graph_filter['graph_generators'],normalization_fn,normalization_nu_fn),
+                data_here=data1,
+                y_range = (0,MAX_REWARD,0.1,np.exp(0)),
                 comparison=['normalization_fn','normalization_nu_fn','reg_fn_gen','reg_proj','batch_size','step_per_epoch','epoch'],
                 # preTTT=probagroupTTT(epsilon=0.1)
                 # preTTT=probagroupTTT(epsilon=0.1, success=2400,value='MaxSeenRew')
