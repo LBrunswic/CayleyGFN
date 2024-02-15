@@ -40,13 +40,12 @@ FIXED_HP = {
     'reg_fn_alpha': (-4, 4),
 }
 
-
 VARIANLE_HP = {
     'reg_fn_gen': ['LogPathLen'],
     'reg_proj': ['ScaledOrthReg'],
-    'seed': list(rng.integers(1000, 10000, 128))[0:1],
-    'normalization_fn': [0],
-    'normalization_nu_fn': [0],
+    'seed': list(rng.integers(1000, 10000, 128))[0:2],
+    'normalization_fn': [0,1,3],
+    'normalization_nu_fn': [0,1,5],
     'batch_size': [2048],
     'step_per_epoch': [50],
     'length_cutoff': [30],
