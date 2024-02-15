@@ -1,5 +1,6 @@
 import os
 import argparse
+from time import sleep
 parser = argparse.ArgumentParser(
                     prog='CayleyGFN',
                     description='Launch batch of experiment',
@@ -34,10 +35,21 @@ parser.add_argument(
     default=0,
     help=f'Set test mode'
 )
-
+parser.add_argument(
+    '--prescript',
+    type=str,
+    default='',
+    help=f'Set prescript mode'
+)
 
 args = parser.parse_args().__dict__
 FOLDER = 'HP'
+if args['prescript'] != '':
+    print(os.path.abspath('.'),'dewde')
+    print(os.listdir('.'))
+    # sleep(1)
+    os.system('bash '+args['prescript'])
+
 
 with open(args['hp_gen_file'],'r') as f:
     exec(f.read())

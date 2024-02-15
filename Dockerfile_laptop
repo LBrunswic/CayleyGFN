@@ -1,4 +1,8 @@
 FROM tensorflow:tf14
+ARG GIT_REPO=CayleyGFN
+ARG GIT_SERVER=172.17.0.1/git
+ARG GIT_HASH=latest
+RUN mkdir TASK_GIT
 RUN mkdir TASK
 WORKDIR /TASK
 RUN mkdir LOGS

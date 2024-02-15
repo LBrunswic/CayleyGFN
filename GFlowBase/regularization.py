@@ -17,6 +17,11 @@ def proj_reg(self, loss_gradients, reg_gradients):
     ]
     return res
 
+@tf.function
+def scaled_proj_reg(self, loss_gradients, reg_gradients, scaling=1e-1):
+    res = proj_reg(self,loss_gradients,scaling*tf.math.l2_normalize(reg_gradients)*tf.linalg.norm(loss_gradients))
+    return res
+
 
 @tf.function
 def projection_orth(u, v):
@@ -77,6 +82,7 @@ class Norm2_gen(tf.keras.Model):
 
 reg_post_choices = {
     'OrthReg': proj_reg,
+    'ScaledOrthReg': scaled_proj_reg,
     'AddReg':  straight_reg,
 }
 
