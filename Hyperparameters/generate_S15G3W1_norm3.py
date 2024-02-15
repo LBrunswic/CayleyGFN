@@ -42,7 +42,7 @@ FIXED_HP = {
 
 VARIANLE_HP = {
     'reg_fn_gen': ['norm2','LogPathLen'],
-    'reg_proj': ['OrthReg', 'AddReg'],
+    'reg_proj': ['ScaledOrthReg'],
     'seed': list(rng.integers(1000, 10000, 128))[0:4],
     'normalization_fn': [3],
     'normalization_nu_fn': [0,1,2,3,4,5],

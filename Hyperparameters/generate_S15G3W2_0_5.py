@@ -8,7 +8,7 @@ rng = np.random.default_rng(seed=12345)
 FOLDER = 'HP'
 
 FIXED_HP = {
-    'N_SAMPLE': 1,
+    'N_SAMPLE': 8,
     'graph_size': 15,
     'graph_generators': 'transpositions',
     'inverse': True,
@@ -19,7 +19,7 @@ FIXED_HP = {
     'grad_batch_size': 1,
     'initial_flow': 0.001,
     'learning_rate': 0.001,
-    'epochs': 1,
+    'epochs': 40,
     'B_beta': -1000.0,
     'path_redraw': 0,
     'neighborhood': 0,
