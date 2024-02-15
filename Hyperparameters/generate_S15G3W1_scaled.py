@@ -8,7 +8,7 @@ rng = np.random.default_rng(seed=12345)
 FOLDER = 'HP'
 
 FIXED_HP = {
-    'N_SAMPLE': 8,
+    'N_SAMPLE': 16,
     'graph_size': 15,
     'graph_generators': 'transpositions',
     'inverse': True,
@@ -41,11 +41,11 @@ FIXED_HP = {
 }
 
 VARIANLE_HP = {
-    'reg_fn_gen': ['norm2','LogPathLen'],
+    'reg_fn_gen': ['LogPathLen'],
     'reg_proj': ['ScaledOrthReg'],
-    'seed': list(rng.integers(1000, 10000, 128))[2:3],
+    'seed': list(rng.integers(1000, 10000, 128))[0:128],
     'normalization_fn': [5],
-    'normalization_nu_fn': [0,5],
+    'normalization_nu_fn': [5],
     'batch_size': [2048],
     'step_per_epoch': [50],
     'length_cutoff': [30],
