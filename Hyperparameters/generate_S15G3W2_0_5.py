@@ -40,6 +40,7 @@ FIXED_HP = {
     'reg_fn_alpha': (-4, 4),
 }
 
+
 VARIANLE_HP = {
     'reg_fn_gen': ['LogPathLen'],
     'reg_proj': ['ScaledOrthReg'],
