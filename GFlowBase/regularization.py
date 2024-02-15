@@ -2,7 +2,7 @@ import tensorflow as tf
 @tf.function
 def straight_reg(self,loss_gradients,reg_gradients):
     n_train = self.n_train
-    res = [loss_gradients[i] + reg_gradients[i] for i in range(n_train)]
+    res = [loss_gradients[i] + self.alpha*reg_gradients[i] for i in range(n_train)]
     return res
 
 
@@ -11,18 +11,17 @@ def proj_reg(self, loss_gradients, reg_gradients):
     n_train = self.n_train
     res = [
         loss_gradients[i]
-        + reg_gradients[i]
-        - projection_orth(reg_gradients[i], loss_gradients[i])
+        + self.alpha * (reg_gradients[i] - projection_orth(reg_gradients[i], loss_gradients[i]))
         for i in range(n_train)
     ]
     return res
 
 @tf.function
-def scaled_proj_reg(self, loss_gradients, reg_gradients, scaling=1e-1):
+def scaled_proj_reg(self, loss_gradients, reg_gradients):
     n_train = self.n_train
     res = [
         loss_gradients[i]
-        + scaling * tf.linalg.norm(loss_gradients[i]) * tf.math.l2_normalize(
+        + self.alpha * tf.linalg.norm(loss_gradients[i]) * tf.math.l2_normalize(
             reg_gradients[i] - projection_orth(reg_gradients[i], loss_gradients[i])
         )
         for i in range(n_train)
@@ -48,7 +47,7 @@ class LogPathLen_gen(tf.keras.Model):
     def call(self,Flownu):
         logdensity_trainable = Flownu[..., 4]
         Ebigtau = tf.reduce_mean(logdensity_trainable[:, -1],axis=0)
-        return tf.reduce_sum(self.alpha * tf.nn.relu(self.logpmin + Ebigtau))
+        return tf.reduce_sum(tf.nn.relu(self.logpmin + Ebigtau))
 
 
 
@@ -70,7 +69,7 @@ class PathAccuracy_gen(tf.keras.Model):
             tf.nn.relu(self.logpmin+tf.math.log(1e-20 + tf.abs(tau_distribution - path_reward / total_reward))),
             axis=1
         ))
-        return self.alpha*accuracy
+        return accuracy
 
 
 class Norm2_gen(tf.keras.Model):
@@ -84,7 +83,7 @@ class Norm2_gen(tf.keras.Model):
     @tf.function
     def call(self,Flownu):
         return tf.reduce_sum(
-            self.alpha * tf.reduce_mean(tf.linalg.norm(Flownu[..., 0] + Flownu[..., 1], ord=2, axis=1), axis=0)
+            tf.reduce_mean(tf.linalg.norm(Flownu[..., 0] + Flownu[..., 1], ord=2, axis=1), axis=0)
         )
 
 reg_post_choices = {
