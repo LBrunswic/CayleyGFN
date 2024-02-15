@@ -1,27 +1,27 @@
 import tensorflow as tf
 @tf.function
-def straight_reg(self,loss_gradients,reg_gradients):
+def straight_reg(self,loss_gradients,reg_gradients,scaling=1.0):
     n_train = self.n_train
-    res = [loss_gradients[i] + self.alpha*reg_gradients[i] for i in range(n_train)]
+    res = [loss_gradients[i] + scaling*reg_gradients[i] for i in range(n_train)]
     return res
 
 
 @tf.function
-def proj_reg(self, loss_gradients, reg_gradients):
+def proj_reg(self, loss_gradients, reg_gradients,scaling=1.0):
     n_train = self.n_train
     res = [
         loss_gradients[i]
-        + self.alpha * (reg_gradients[i] - projection_orth(reg_gradients[i], loss_gradients[i]))
+        + scaling * (reg_gradients[i] - projection_orth(reg_gradients[i], loss_gradients[i]))
         for i in range(n_train)
     ]
     return res
 
 @tf.function
-def scaled_proj_reg(self, loss_gradients, reg_gradients):
+def scaled_proj_reg(self, loss_gradients, reg_gradients,scaling=1.0):
     n_train = self.n_train
     res = [
         loss_gradients[i]
-        + self.alpha * tf.linalg.norm(loss_gradients[i]) * tf.math.l2_normalize(
+        + scaling * tf.linalg.norm(loss_gradients[i]) * tf.math.l2_normalize(
             reg_gradients[i] - projection_orth(reg_gradients[i], loss_gradients[i])
         )
         for i in range(n_train)
