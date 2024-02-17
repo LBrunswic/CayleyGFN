@@ -51,7 +51,7 @@ class LogPathLen_gen(tf.keras.Model):
 
 class LogEPathLen_gen(tf.keras.Model):
     def __init__(self, alpha,logpmin,name='LogPathLen_fn', **kwargs):
-        super(LogPathLen_gen, self).__init__(name=name, **kwargs)
+        super(LogEPathLen_gen, self).__init__(name=name, **kwargs)
         self.alpha = tf.Variable(tf.math.exp(alpha), trainable=False, dtype='float32')
         self.logpmin = tf.Variable(logpmin, trainable=False, dtype='float32')
     @tf.function
