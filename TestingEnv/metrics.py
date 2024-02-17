@@ -148,7 +148,7 @@ class PathLeak(tf.keras.metrics.Metric):
 
     def update_state(self, flownu, reg_gradients, sample_weight=None):
         logdensity_trainable = flownu[..., 4]
-        expected_leak = tf.reduce_mean(logdensity_trainable[:, -1], axis=0)
+        expected_leak = tf.math.log(tf.reduce_mean(tf.exp(logdensity_trainable[:, -1]), axis=0))
         self.path_leak.assign(expected_leak)
 
     def reset_state(self):

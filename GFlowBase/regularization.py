@@ -49,6 +49,17 @@ class LogPathLen_gen(tf.keras.Model):
         Ebigtau = tf.reduce_mean(logdensity_trainable[:, -1],axis=0)
         return tf.reduce_sum(tf.nn.relu(self.logpmin + Ebigtau))
 
+class LogEPathLen_gen(tf.keras.Model):
+    def __init__(self, alpha,logpmin,name='LogPathLen_fn', **kwargs):
+        super(LogPathLen_gen, self).__init__(name=name, **kwargs)
+        self.alpha = tf.Variable(tf.math.exp(alpha), trainable=False, dtype='float32')
+        self.logpmin = tf.Variable(logpmin, trainable=False, dtype='float32')
+    @tf.function
+    def call(self,Flownu):
+        logdensity_trainable = Flownu[..., 4]
+        Ebigtau = tf.math.log(tf.reduce_mean(tf.exp(logdensity_trainable[:, -1]), axis=0))
+        return tf.reduce_sum(tf.nn.relu(self.logpmin + Ebigtau))
+
 
 
 class PathAccuracy_gen(tf.keras.Model):
@@ -94,5 +105,6 @@ reg_post_choices = {
 
 reg_fn_gen_choices = {
     'LogPathLen': LogPathLen_gen,
+    'LogEPathLen': LogEPathLen_gen,
     'norm2': Norm2_gen,
 }
