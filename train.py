@@ -19,11 +19,8 @@ import pandas
 from logger_config import log_dict,log_tensorlist
 
 
-def train_test_model(hparams,logger):
-    logger.info('CALL TRAIN')
-    tf.random.set_seed(hparams['seed'])
-
-
+def model_gen(hparams,logger):
+    logger.info('Generate Model')
     group_dtype = hparams['group_dtype']
     # hparams.update({'group_dtype' : group_dtype})
     G = Symmetric(
@@ -31,37 +28,25 @@ def train_test_model(hparams,logger):
         generators=hparams['graph_generators'],
         representation=[('natural', {})],
         inverse=hparams['initial_pos'],
-        random_gen=eval(hparams['initial_pos'])(hparams['graph_size'],group_dtype=group_dtype),
+        random_gen=eval(hparams['initial_pos'])(hparams['graph_size'], group_dtype=group_dtype),
         embedding=[(x, {}) for x in hparams['embedding']],
         group_dtype=group_dtype
     )
     logger.debug('G: %s' % str(G))
-    if hparams['B_beta'] > -900:
-        B = Bpower(beta=tf.math.exp(hparams['B_beta']))
-    else:
-        B = lambda x, y: 1
-    logger.debug('B: %s' % str(B))
-    loss_fn = MeanABError(
-        A=eval(hparams['loss_base'])(alpha=hparams['loss_alpha']),
-        B=B,
-        normalization_fn=normalization_flow_fns[hparams['normalization_fn']],
-        normalization_nu_fn=normalization_nu_fns[hparams['normalization_nu_fn']],
-        cutoff=cutoff_fns[hparams['loss_cutoff']],
-    )
-    logger.debug('loss_fn: %s' % loss_fn)
+
     reg_fn_gen = reg_fn_gen_choices[hparams['reg_fn_gen']]
     reg_fn = reg_fn_gen(
-        alpha=(0.,)*hparams['pool_size'],
+        alpha=(0.,) * hparams['pool_size'],
         logpmin=hparams['reg_fn_logmin'],
     )
     logger.debug('reg_fn: %s' % reg_fn)
     reg_post = reg_post_choices[hparams['reg_proj']]
     reward_fn = hparams['rew_fn']
     reward_args = (hparams['graph_size'],)
-    reward_kwargs = {'factor':hparams['rew_factor'], **hparams['rew_param']}
+    reward_kwargs = {'factor': hparams['rew_factor'], **hparams['rew_param']}
     heuristic_fn = hparams['heuristic_fn']
     heuristic_args = (hparams['graph_size'],)
-    heuristic_kwargs = {'factor':hparams['heuristic_factor'], **hparams['heuristic_param']}
+    heuristic_kwargs = {'factor': hparams['heuristic_factor'], **hparams['heuristic_param']}
 
     flow = MultiGFlowCayleyLinear(
         graph=G,
@@ -85,15 +70,33 @@ def train_test_model(hparams,logger):
         logger=logger,
     )
 
-
     flow.initialize()
+    return flow
 
-    all_alpha = np.linspace(*hparams['reg_fn_alpha'], hparams['N_SAMPLE'], dtype='float32')
-    alpha_range = [
-        all_alpha[i*hparams['pool_size']:(i+1)*hparams['pool_size']]
-        for i in range(len(all_alpha)//hparams['pool_size'])
-    ]
-    assert(all([len(x) ==hparams['pool_size'] for x in alpha_range]))
+def loss_gen(hparams,logger):
+    logger.info('Generate Loss')
+    if hparams['B_beta'] > -900:
+        B = Bpower(beta=tf.math.exp(hparams['B_beta']))
+    else:
+        B = lambda x, y: 1
+    logger.debug('B: %s' % str(B))
+    loss_fn = MeanABError(
+        A=eval(hparams['loss_base'])(alpha=hparams['loss_alpha']),
+        B=B,
+        normalization_fn=normalization_flow_fns[hparams['normalization_fn']],
+        normalization_nu_fn=normalization_nu_fns[hparams['normalization_nu_fn']],
+        cutoff=cutoff_fns[hparams['loss_cutoff']],
+    )
+    logger.debug('loss_fn: %s' % loss_fn)
+    return loss_fn
+def train_test_model(hparams,logger):
+    logger.info('CALL TRAIN')
+    tf.random.set_seed(hparams['seed'])
+
+    # Initialize model
+    flow = model_gen(hparams,logger)
+
+    # Initialize ReplayBuffer
     seeded_uniform = tf.random.stateless_uniform(
         (hparams['epochs'], hparams['grad_batch_size'], hparams['batch_size'], hparams['length_cutoff'] - 1,1),
         (hparams['seed'], hparams['seed']),
@@ -112,22 +115,24 @@ def train_test_model(hparams,logger):
     )
     callback_alpha_tune = fn_alpha_tune['fn_alpha_tune_grid'](
         epoch_per_train=hparams['epochs'],
-        alpha_range=alpha_range,
-        seed=hparams['seed']
+        N_SAMPLE=hparams['N_SAMPLE'],
+        alpha_range=hparams['reg_fn_alpha'],
+        seed=hparams['seed'],
+        pool_size=hparams['pool_size'],
     )
-    pandas_record = PandasRecord(hparams,alpha_range,epoch_period=hparams['epochs'])
-    Replay.reward = reward_fn
+    pandas_record = PandasRecord(hparams, epoch_period=hparams['epochs'])
+    Replay.reward = hparams['rew_fn']
     memory_use = MemoryUse()
     for m in metrics:
         flow.metric_list.append(m(nflow=hparams['pool_size']))
 
     flow.compile(
         optimizer=optimizers[hparams['optimizer']](hparams['learning_rate']),
-        loss=loss_fn,
+        loss=loss_gen(hparams,logger),
     )
     log_tensorlist(logger,flow.trainable_variables,name='flow trainable')
     log_tensorlist(logger,flow.non_trainable_variables,name='flow non trainable')
-    TOTAL_EPOCH = hparams['epochs']*len(alpha_range)
+    TOTAL_EPOCH = hparams['epochs'] * hparams['N_SAMPLE']
     flow.fit(
         np.zeros(hparams['step_per_epoch']),
         epochs=TOTAL_EPOCH,

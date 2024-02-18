@@ -45,18 +45,29 @@ def Alogsquare(alpha=2,delta=1.):
     def aux(x):
         return tf.math.log(1+delta*tf.pow(tf.math.abs(x),alpha))
     return aux
-def Apower(alpha=2.):
-    @tf.function
-    def aux(x):
-        return tf.math.pow(1e-20+tf.math.abs(x),alpha)
-    return aux
 
-def Bpower(alpha=2.,beta=0.1,delta=1e-8):
-    @tf.function
-    def B(x, y):
+
+class Apower(tf.keras.models.Model):
+    def __init__(self, alpha=2., **kwargs):
+        super(Apower, self).__init__(**kwargs)
+        self.alpha = tf.Variable(alpha,trainable=False)
+
+    def call(self, x):
+        return tf.math.pow(1e-20+tf.math.abs(x), self.alpha)
+
+
+class Bpower(tf.keras.models.Model):
+    def __init__(self, alpha=2.,beta=0.1,delta=1e-8, **kwargs):
+        super(Bpower, self).__init__(**kwargs)
+        self.alpha = tf.Variable(alpha,trainable=False)
+        self.beta = tf.Variable(beta,trainable=False)
+        self.delta = tf.Variable(delta,trainable=False)
+
+
+    def call(self,x, y):
         # return tf.math.log(1 + beta*tf.math.abs(tf.math.pow(x,alpha) -tf.math.pow(y,alpha)))
-        return (1 + beta* tf.math.pow(delta + x + y,alpha))
-    return B
+        return (1 + self.beta* tf.math.pow(self.delta + x + y,self.alpha))
+
 
 class divergence(tf.keras.losses.Loss):
     def __init__(self, g=Bengio, delta=1e-10,name='plop',**kwargs):
@@ -117,7 +128,7 @@ class MeanABError(tf.keras.losses.Loss):
                 tf.reduce_sum(
                     cutoff
                     * density_fixed
-                    * self.A((Foutstar+R-Finstar-Finit)/normalization)
+                    * self.A((Fout-Fin)/normalization)
                     * self.B(Fin /normalization, Fout/normalization),
                 axis=1),
             axis=0)

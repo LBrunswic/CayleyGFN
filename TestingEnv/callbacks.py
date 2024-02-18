@@ -8,12 +8,11 @@ from datetime import datetime
 from utils.utils import concat_dict_of_ndarray
 
 class PandasRecord(tf.keras.callbacks.Callback):
-    def __init__(self,hparams,alpha_range,epoch_period = 10):
+    def __init__(self,hparams,epoch_period = 10):
         self.epoch_period = epoch_period
         self.results = []
         self.hparams = hparams
         self.nflow = hparams['pool_size']
-        self.alpha_range = alpha_range
     def on_epoch_end(self, epoch, logs=None):
         # print(epoch)
         res = self.model.evaluate()
@@ -21,7 +20,7 @@ class PandasRecord(tf.keras.callbacks.Callback):
         true_epoch = 1+epoch % self.epoch_period
         res.update({key: [self.hparams[key]]*self.nflow for key in self.hparams if key not in  ['reg_fn_alpha','embedding']})
         res.update({'epoch': np.array([true_epoch]*self.nflow)})
-        res.update({'reg_fn_alpha': self.alpha_range[episode]})
+        res.update({'reg_fn_alpha': self.model.reg_fn.alpha.numpy()})
         res.update({'embedding': [str(self.hparams['embedding'])]*self.nflow })
         res.update({'episode': [episode]*self.nflow })
         for key in res:
@@ -134,6 +133,26 @@ class ReplayBuffer(tf.keras.callbacks.Callback):
         self.gen_path_model = tf.keras.Model(inputs=seeded_uniform_positions, outputs=outputs, name='Gen')
 
 class fn_alpha_tune_grid(tf.keras.callbacks.Callback):
+    def __init__(self, epoch_per_train=10, alpha_range=None, N_SAMPLE=16, pool_size=1, seed=1234,**kwargs):
+        super(fn_alpha_tune_grid).__init__()
+        self.epoch_per_train = epoch_per_train
+        all_alpha = np.linspace(*alpha_range, N_SAMPLE, dtype='float32')
+        alpha_range = [
+            all_alpha[i * pool_size:(i + 1) * pool_size]
+            for i in range(len(all_alpha) // pool_size)
+        ]
+        assert (all([len(x) == pool_size for x in alpha_range]))
+        self.alpha_range = alpha_range
+        self.current_experiments = -1
+        self.metrics = []
+        self.seed = seed
+    def on_epoch_begin(self, epoch, logs=None):
+        if epoch % self.epoch_per_train == 0:
+            self.current_experiments += 1
+            self.model.reinitialize()
+            self.model.reg_fn.alpha.assign(self.alpha_range[self.current_experiments])
+
+class fn_alpha_tune_search(tf.keras.callbacks.Callback):
     def __init__(self, epoch_per_train=10, alpha_range=None, seed=1234,**kwargs):
         super(fn_alpha_tune_grid).__init__()
         self.epoch_per_train= epoch_per_train
