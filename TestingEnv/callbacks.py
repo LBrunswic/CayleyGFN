@@ -133,10 +133,10 @@ class ReplayBuffer(tf.keras.callbacks.Callback):
         self.gen_path_model = tf.keras.Model(inputs=seeded_uniform_positions, outputs=outputs, name='Gen')
 
 class fn_alpha_tune_grid(tf.keras.callbacks.Callback):
-    def __init__(self, epoch_per_train=10, alpha_range=None, N_SAMPLE=16, pool_size=1, seed=1234,**kwargs):
+    def __init__(self, epochs=10, reg_fn_alpha=None, N_SAMPLE=16, pool_size=1, seed=1234,**kwargs):
         super(fn_alpha_tune_grid).__init__()
-        self.epoch_per_train = epoch_per_train
-        all_alpha = np.linspace(*alpha_range, N_SAMPLE, dtype='float32')
+        self.epoch_per_train = epochs
+        all_alpha = np.linspace(*reg_fn_alpha, N_SAMPLE, dtype='float32')
         alpha_range = [
             all_alpha[i * pool_size:(i + 1) * pool_size]
             for i in range(len(all_alpha) // pool_size)

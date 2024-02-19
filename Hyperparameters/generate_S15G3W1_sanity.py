@@ -38,6 +38,7 @@ FIXED_HP = {
     'reg_fn_alpha_schedule': 'none',
     'group_dtype': 'float32',
     'reg_fn_alpha': (-10, 10),
+    'fn_alpha_tune': 'fn_alpha_tune_grid'
 }
 
 VARIANLE_HP = {

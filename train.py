@@ -113,13 +113,7 @@ def train_test_model(hparams,logger):
         seeded_initial=seeded_initial,
         pool_size=hparams['pool_size'],
     )
-    callback_alpha_tune = fn_alpha_tune['fn_alpha_tune_grid'](
-        epoch_per_train=hparams['epochs'],
-        N_SAMPLE=hparams['N_SAMPLE'],
-        alpha_range=hparams['reg_fn_alpha'],
-        seed=hparams['seed'],
-        pool_size=hparams['pool_size'],
-    )
+    callback_alpha_tune = fn_alpha_tune[hparams['fn_alpha_tune']](**hparams)
     pandas_record = PandasRecord(hparams, epoch_period=hparams['epochs'])
     Replay.reward = hparams['rew_fn']
     memory_use = MemoryUse()
