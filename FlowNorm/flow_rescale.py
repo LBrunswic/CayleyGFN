@@ -106,7 +106,7 @@ class BatchmeanNormalizedFInOut(tf.keras.Model):
                               axis=0, keepdims=True)
 
 
-normalization_flow_models = [
+normalization_flow_fns = [
     TrivialNu(),
     FInOut(),
     FOutStar(),
