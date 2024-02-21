@@ -35,7 +35,8 @@ class PandasRecord(tf.keras.callbacks.Callback):
                 # print(res[key])
         self.results.append(res)
     def on_train_end(self, logs=None):
-        print(self.results)
+        for x in self.results:
+            print(x['alpha_range'])
         self.results = pandas.DataFrame(concat_dict_of_ndarray(self.results))
 
 class ReplayBuffer(tf.keras.callbacks.Callback):
