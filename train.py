@@ -34,12 +34,8 @@ def model_gen(hparams,logger):
     )
     logger.debug('G: %s' % str(G))
 
-    reg_fn_gen = reg_fn_gen_choices[hparams['reg_fn_gen']]
-    reg_fn = reg_fn_gen(
-        alpha=(0.,) * hparams['pool_size'],
-        logpmin=hparams['reg_fn_logmin'],
-    )
-    logger.debug('reg_fn: %s' % reg_fn)
+
+
     reg_post = reg_post_choices[hparams['reg_proj']]
     reward_fn = hparams['rew_fn']
     reward_args = (hparams['graph_size'],)
@@ -47,6 +43,12 @@ def model_gen(hparams,logger):
     heuristic_fn = hparams['heuristic_fn']
     heuristic_args = (hparams['graph_size'],)
     heuristic_kwargs = {'factor': hparams['heuristic_factor'], **hparams['heuristic_param']}
+    reg_fn_gen = reg_fn_gen_choices[hparams['reg_fn_gen']]
+    reg_fn = reg_fn_gen(
+        alpha=(0.,) * hparams['pool_size'],
+        logpmin=hparams['reg_fn_logmin'],
+    )
+    logger.debug('reg_fn: %s' % reg_fn)
 
     flow = MultiGFlowCayleyLinear(
         graph=G,
@@ -75,13 +77,11 @@ def model_gen(hparams,logger):
 
 def loss_gen(hparams,logger):
     logger.info('Generate Loss')
-    if hparams['B_beta'] > -900:
-        B = Bpower(beta=tf.math.exp(hparams['B_beta']))
-    else:
-        B = lambda x, y: 1
+    B = Bpower(beta=hparams['B_beta'])
+    A = Apower(alpha=hparams['loss_alpha'])
     logger.debug('B: %s' % str(B))
     loss_fn = MeanABError(
-        A=eval(hparams['loss_base'])(alpha=hparams['loss_alpha']),
+        A=A,
         B=B,
         normalization_fn=normalization_flow_fns[hparams['normalization_fn']],
         normalization_nu_fn=normalization_nu_fns[hparams['normalization_nu_fn']],
@@ -113,7 +113,7 @@ def train_test_model(hparams,logger):
         seeded_initial=seeded_initial,
         pool_size=hparams['pool_size'],
     )
-    callback_alpha_tune = tuning_method[hparams['tuning_method']](**hparams)
+    callback_hp_tune = tuning_method[hparams['tuning_method']](**hparams)
     pandas_record = PandasRecord(hparams, epoch_period=hparams['epochs'])
     Replay.reward = hparams['rew_fn']
     memory_use = MemoryUse()
@@ -141,7 +141,7 @@ def train_test_model(hparams,logger):
                                            # profile_batch = (2,200),
                                            # write_steps_per_second=True,
                                            # ),
-            callback_alpha_tune,
+            callback_hp_tune,
             memory_use,
             # LogProgress(logger)
         ]
