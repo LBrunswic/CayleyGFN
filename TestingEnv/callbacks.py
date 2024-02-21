@@ -8,8 +8,9 @@ from datetime import datetime
 from utils.utils import concat_dict_of_ndarray
 
 class PandasRecord(tf.keras.callbacks.Callback):
-    def __init__(self,hparams,epoch_period = 10):
+    def __init__(self,hparams,loss,epoch_period = 10):
         self.epoch_period = epoch_period
+        self.loss = loss
         self.results = []
         self.hparams = hparams
         self.nflow = hparams['pool_size']
@@ -26,6 +27,7 @@ class PandasRecord(tf.keras.callbacks.Callback):
         res.update({'epoch': np.array([true_epoch]*self.nflow)})
         res.update({'episode': [episode] * self.nflow})
         res.update({'reg_fn_alpha': self.model.reg_fn.alpha.numpy()})
+        res.update({'reg_fn_beta': self.loss.B.reg_fn.alpha.numpy()})
         for key in self.hparams:
             if isinstance(self.hparams[key],tuple):
                 res.update({key: [str(self.hparams[key])]*self.nflow })
@@ -37,13 +39,9 @@ class PandasRecord(tf.keras.callbacks.Callback):
                 res[key] = np.array(res[key])
             if len(res[key].shape)>1:
                 pass
-                # print(key,res[key].shape)
-                # print(res[key])
+
         self.results.append(res)
     def on_train_end(self, logs=None):
-        for x in self.results:
-            print('range:', x['alpha_range'])
-            print('embedding:', x['embedding'])
         self.results = pandas.DataFrame(concat_dict_of_ndarray(self.results))
 
 class ReplayBuffer(tf.keras.callbacks.Callback):

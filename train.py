@@ -95,7 +95,7 @@ def train_test_model(hparams,logger):
 
     # Initialize model
     flow = model_gen(hparams,logger)
-
+    loss = loss_gen(hparams,logger)
     # Initialize ReplayBuffer
     seeded_uniform = tf.random.stateless_uniform(
         (hparams['epochs'], hparams['grad_batch_size'], hparams['batch_size'], hparams['length_cutoff'] - 1,1),
@@ -114,7 +114,7 @@ def train_test_model(hparams,logger):
         pool_size=hparams['pool_size'],
     )
     callback_hp_tune = tuning_method[hparams['tuning_method']](**hparams)
-    pandas_record = PandasRecord(hparams, epoch_period=hparams['epochs'])
+    pandas_record = PandasRecord(hparams, loss, epoch_period=hparams['epochs'])
     Replay.reward = hparams['rew_fn']
     memory_use = MemoryUse()
     for m in metrics:
@@ -122,7 +122,7 @@ def train_test_model(hparams,logger):
 
     flow.compile(
         optimizer=optimizers[hparams['optimizer']](hparams['learning_rate']),
-        loss=loss_gen(hparams,logger),
+        loss=loss,
     )
     log_tensorlist(logger,flow.trainable_variables,name='flow trainable')
     log_tensorlist(logger,flow.non_trainable_variables,name='flow non trainable')

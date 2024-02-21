@@ -57,6 +57,8 @@ class Apower(tf.keras.models.Model):
     def __init__(self, alpha=2., **kwargs):
         super(Apower, self).__init__(**kwargs)
         self.alpha = tf.Variable(alpha, trainable=False)
+    def HP(self):
+        return {'alpha' :self.alpha.numpy()}
 
     def call(self, x):
         return tf.math.pow(1e-20 + tf.math.abs(x), self.alpha)
@@ -71,6 +73,12 @@ class Bpower(tf.keras.models.Model):
             self.beta = tf.Variable(tf.exp(beta), trainable=False)
         if beta is None:
             self.beta = tf.Variable(0., trainable=False)
+    def HP(self):
+        return {
+            'alpha': self.alpha.numpy(),
+            'delta': self.delta.numpy(),
+            'beta': self.beta.numpy(),
+        }
 
     def call(self, x, y):
         return (1 + self.beta * tf.math.pow(self.delta + x + y, self.alpha))
@@ -116,6 +124,15 @@ class MeanABError(tf.keras.losses.Loss):
         self.normalization_fn = normalization_fn
         self.normalization_nu_fn = normalization_nu_fn
         self.cutoff = cutoff
+
+    def HP(self):
+        HP = {}
+        HP_A = self.A.HP()
+        HP.update({f'A_{key}' : HP_A[key]  for key in HP_A})
+        HP_B = self.B.HP()
+        HP.update({f'B_{key}' : HP_B[key]  for key in HP_B})
+        HP.update({'normalization_fn': self.normalization_fn.name})
+        HP.update({'normalization_nu_fn': self.normalization_nu_fn.name})
 
     @tf.function
     def call(self, Flownu, finit):

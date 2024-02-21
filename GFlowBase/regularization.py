@@ -91,11 +91,13 @@ class Norm2_gen(tf.keras.Model):
         super(Norm2_gen, self).__init__(name='Norm2_fn', **kwargs)
         self.alpha = tf.Variable(tf.math.exp(alpha), trainable=False, dtype='float32')
         self.logpmin = tf.Variable(logpmin, trainable=False, dtype='float32')
+
     @tf.function
     def call(self,Flownu):
         return tf.reduce_sum(
             tf.reduce_mean(tf.linalg.norm(Flownu[..., 0] + Flownu[..., 1], ord=2, axis=1), axis=0)
         )
+
 
 reg_post_choices = {
     'OrthReg': proj_reg,
