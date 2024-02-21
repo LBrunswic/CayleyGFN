@@ -10,6 +10,9 @@ class SelfDensity(BaseModel):
                 The last axis contains (F_i^*,F_o^*,R/r, F(init->\cdot)/F_o(init), log P(tau>t|s_\dot), R)
             init: F_o(init)
     """
+    def __init__(self, name="SelfDensity", **kwargs):
+        super(SelfDensity, self).__init__(name=name, **kwargs)
+
     def call(self, flownu, init):
         logdensity_trainable = flownu[..., 4]
         return tf.math.exp(logdensity_trainable)
@@ -22,6 +25,9 @@ class SelfDensityModerationPathwiseExpectedLength(BaseModel):
                 The last axis contains (F_i^*,F_o^*,R/r, F(init->\cdot)/F_o(init), log P(tau>t|s_\dot), R)
             init: F_o(init)
     """
+    def __init__(self, name="SelfDensityModerationPathwiseExpectedLength", **kwargs):
+        super(SelfDensityModerationPathwiseExpectedLength, self).__init__(name=name, **kwargs)
+
     def call(self, flownu, init):
         logdensity_trainable = flownu[..., 4]
         return tf.math.exp(logdensity_trainable)/(1+tf.reduce_sum(tf.math.exp(flownu[..., 4]), axis=1, keepdims=True))
@@ -34,6 +40,9 @@ class SelfDensityModerationExpectedLength(BaseModel):
                 The last axis contains (F_i^*,F_o^*,R/r, F(init->\cdot)/F_o(init), log P(tau>t|s_\dot), R)
             init: F_o(init)021
     """
+    def __init__(self, name="SelfDensityModerationExpectedLength", **kwargs):
+        super(SelfDensityModerationExpectedLength, self).__init__(name=name, **kwargs)
+
     def call(self, flownu, init):
         logdensity_trainable = flownu[..., 4]
         return tf.math.exp(logdensity_trainable)/tf.reduce_mean((1+tf.reduce_sum(tf.math.exp(flownu[..., 4]), axis=1, keepdims=True)), axis=0, keepdims=True)
@@ -46,6 +55,9 @@ class TheoreticalPathwiseDensity(BaseModel):
                 The last axis contains (F_i^*,F_o^*,R/r, F(init->\cdot)/F_o(init), log P(tau>t|s_\dot), R)
             init: F_o(init)021
     """
+    def __init__(self, name="TheoreticalPathwiseDensity", **kwargs):
+        super(TheoreticalPathwiseDensity, self).__init__(name=name, **kwargs)
+
     def call(self, flownu, init):
         R = flownu[..., 2]
         return tf.math.cumsum(R,axis=1,reverse=True)
@@ -58,6 +70,9 @@ class TheoreticalPathwiseDensityModerationPathwiseExpectedLength(BaseModel):
                 The last axis contains (F_i^*,F_o^*,R/r, F(init->\cdot)/F_o(init), log P(tau>t|s_\dot), R)
             init: F_o(init)021
     """
+    def __init__(self, name="TheoreticalPathwiseDensityModerationPathwiseExpectedLength", **kwargs):
+        super(TheoreticalPathwiseDensityModerationPathwiseExpectedLength, self).__init__(name=name, **kwargs)
+
     def call(self, flownu, init):
         R = flownu[..., 2]
         return tf.math.cumsum(R,axis=1,reverse=True)/(1+tf.reduce_sum(tf.math.exp(flownu[..., 4]), axis=1, keepdims=True))
@@ -70,6 +85,9 @@ class TheoreticalPathwiseDensityModerationExpectedLength(BaseModel):
                 The last axis contains (F_i^*,F_o^*,R/r, F(init->\cdot)/F_o(init), log P(tau>t|s_\dot), R)
             init: F_o(init)021
     """
+    def __init__(self, name="TheoreticalPathwiseDensityModerationExpectedLength", **kwargs):
+        super(TheoreticalPathwiseDensityModerationExpectedLength, self).__init__(name=name, **kwargs)
+
     def call(self, flownu, init):
         R = flownu[..., 2]
         return tf.math.cumsum(R,axis=1,reverse=True)/tf.reduce_mean((1+tf.reduce_sum(tf.math.exp(flownu[..., 4]), axis=1, keepdims=True)), axis=0, keepdims=True)
