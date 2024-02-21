@@ -23,6 +23,7 @@ class PandasRecord(tf.keras.callbacks.Callback):
         res.update({'tuning_param': self.model.reg_fn.alpha.numpy()})
         res.update({'embedding': [str(self.hparams['embedding'])]*self.nflow })
         res.update({'episode': [episode]*self.nflow })
+        print(res)
         for key in res:
             if isinstance(res[key],tf.Tensor):
                 res[key] = res[key].numpy()
@@ -34,7 +35,7 @@ class PandasRecord(tf.keras.callbacks.Callback):
                 # print(res[key])
         self.results.append(res)
     def on_train_end(self, logs=None):
-
+        print(self.results)
         self.results = pandas.DataFrame(concat_dict_of_ndarray(self.results))
 
 class ReplayBuffer(tf.keras.callbacks.Callback):
