@@ -26,7 +26,9 @@ class PandasRecord(tf.keras.callbacks.Callback):
         })
         res.update({'epoch': np.array([true_epoch]*self.nflow)})
         res.update({'episode': [episode] * self.nflow})
-        res.update(self.loss.HP())
+        loss_HP = self.loss.HP()
+
+        res.update({key: [loss_HP[key]] * self.nflow for key in loss_HP})
         for key in self.hparams:
             if isinstance(self.hparams[key],tuple):
                 res.update({key: [str(self.hparams[key])]*self.nflow })
