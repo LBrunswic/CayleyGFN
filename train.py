@@ -7,7 +7,7 @@ from GFlowBase.GFlowCayley import  MultiGFlowCayleyLinear
 from GFlowBase.losses import MeanABError,Apower, Bpower,cutoff_fns
 from GFlowBase.rewards import Reward
 from GFlowBase.regularization import reg_post_choices,reg_fn_gen_choices
-from TestingEnv import ReplayBuffer,FlowSizeStop,fn_alpha_tune,metrics,PandasRecord,MemoryUse#, LogProgress
+from TestingEnv import ReplayBuffer,FlowSizeStop,tuning_method,metrics,PandasRecord,MemoryUse#, LogProgress
 import tensorflow as tf
 from datetime import datetime
 from time import time
@@ -113,7 +113,7 @@ def train_test_model(hparams,logger):
         seeded_initial=seeded_initial,
         pool_size=hparams['pool_size'],
     )
-    callback_alpha_tune = fn_alpha_tune[hparams['fn_alpha_tune']](**hparams)
+    callback_alpha_tune = tuning_method[hparams['tuning_method']](**hparams)
     pandas_record = PandasRecord(hparams, epoch_period=hparams['epochs'])
     Replay.reward = hparams['rew_fn']
     memory_use = MemoryUse()

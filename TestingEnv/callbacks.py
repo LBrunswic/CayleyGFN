@@ -152,21 +152,36 @@ class fn_alpha_tune_grid(tf.keras.callbacks.Callback):
             self.model.reinitialize()
             self.model.reg_fn.alpha.assign(self.alpha_range[self.current_experiments])
 
+
 class fn_alpha_tune_search(tf.keras.callbacks.Callback):
-    def __init__(self, epoch_per_train=10, alpha_range=None, seed=1234,**kwargs):
+    def __init__(self, epochs=10, flow_bang_threshold=10., flow_crush_threshold =0.01, reg_fn_alpha=None, N_SAMPLE=16, pool_size=1, seed=1234,**kwargs):
         super(fn_alpha_tune_grid).__init__()
-        self.epoch_per_train= epoch_per_train
-        self.alpha_range = alpha_range
+        self.epoch_per_train = epochs
+        self.min = [reg_fn_alpha[0]]*pool_size
+        self.max = [reg_fn_alpha[1]]*pool_size
+        self.flow_crush = [self.max]*pool_size
+        self.flow_bang = [self.min]*pool_size
+        self.sweet
+        self.flow_bang_threshold = flow_bang_threshold
+        self.flow_crush_threshold = flow_crush_threshold
+        self.alpha_stack = []
         self.current_experiments = -1
         self.metrics = []
         self.seed = seed
+        self.phase = 'crush'
     def on_epoch_begin(self, epoch, logs=None):
         if epoch % self.epoch_per_train == 0:
             self.current_experiments += 1
-            print('reinitialization')
-            print(self.model.trainable_variables[0][0,0,0,0,:8])
+            res = self.model.evaluate()
+            res['FlowSize'] = res['FlowSize'].numpy()
+            for i in range(self.pool_size):
+                if res['FlowSize'][i] < self.flow_crush_threshold:
+                    self.flow_crush[i] = self.model.reg_fn.alpha[i]
+                if res['FlowSize'][i] > self.flow_bang_threshold:
+                    self.flow_bang[i] = self.model.reg_fn.alpha[i]
+
+
             self.model.reinitialize()
-            print(self.model.trainable_variables[0][0,0,0,0,:8])
             self.model.reg_fn.alpha.assign(self.alpha_range[self.current_experiments])
 
 class FlowSizeStop(tf.keras.callbacks.Callback):
@@ -205,7 +220,8 @@ class LogProgress(tf.keras.callbacks.Callback):
     def on_epoch_end(self, epoch, logs=None):
         self.logger.info('epoch %d' % (epoch, ))
 
-fn_alpha_tune = {
-    'fn_alpha_tune_grid' : fn_alpha_tune_grid
+tuning_method = {
+    'fn_alpha_tune_grid' : fn_alpha_tune_grid,
+    'fn_alpha_tune_search' : fn_alpha_tune_search,
 }
 

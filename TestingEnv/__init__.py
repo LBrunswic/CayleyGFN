@@ -1,4 +1,4 @@
-from TestingEnv.callbacks import ReplayBuffer,FlowSizeStop,fn_alpha_tune,PandasRecord,MemoryUse
+from TestingEnv.callbacks import ReplayBuffer,FlowSizeStop,tuning_method,PandasRecord,MemoryUse
 from TestingEnv.metrics import metrics
 import TestingEnv.poolutils as poolutils
 import TestingEnv.hyperparametersutils as hyperparametersutils

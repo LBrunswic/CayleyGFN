@@ -9,7 +9,7 @@ FOLDER = 'HP'
 
 FIXED_HP = {
     'N_SAMPLE': 8,
-    'graph_size': 5,
+    'graph_size': 15,
     'graph_generators': 'transpositions',
     'inverse': True,
     'initial_pos': 'SymmetricUniform',
@@ -19,7 +19,7 @@ FIXED_HP = {
     'grad_batch_size': 1,
     'initial_flow': 0.001,
     'learning_rate': 0.001,
-    'epochs': 2,
+    'epochs': 20,
     'B_beta': -1000.0,
     'path_redraw': 0,
     'neighborhood': 0,
@@ -47,9 +47,9 @@ VARIANLE_HP = {
     'seed': list(rng.integers(1000, 10000, 128))[0:1],
     'normalization_fn': [0],
     'normalization_nu_fn': [0],
-    'batch_size': [64],
-    'step_per_epoch': [10],
-    'length_cutoff': [10],
+    'batch_size': [2048],
+    'step_per_epoch': [50],
+    'length_cutoff': [30],
     'embedding': [('cos', 'sin', 'natural')],
     'loss_alpha': [2.0],
 }
