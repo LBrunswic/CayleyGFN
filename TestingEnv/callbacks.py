@@ -34,9 +34,12 @@ class PandasRecord(tf.keras.callbacks.Callback):
         for key in res:
             if isinstance(res[key],tf.Tensor):
                 res[key] = res[key].numpy()
-            if isinstance(res[key],list):
+            elif isinstance(res[key],list):
                 res[key] = np.array(res[key])
-            if len(res[key].shape)>1:
+            elif isinstance(res[key],str):
+                print(key,res[key])
+                raise
+            elif len(res[key].shape)>1:
                 pass
 
         self.results.append(res)
