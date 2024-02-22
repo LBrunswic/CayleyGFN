@@ -153,6 +153,7 @@ class PathLeak(tf.keras.metrics.Metric):
 
     def reset_state(self):
         self.path_leak.assign(tf.zeros_like(self.path_leak))
+
     def result(self):
         return self.path_leak
 
