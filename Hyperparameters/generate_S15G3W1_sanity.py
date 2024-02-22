@@ -6,10 +6,10 @@ import hashlib
 rng = np.random.default_rng(seed=12345)
 
 FOLDER = 'HP'
-
 BASE_HP = {
-    'graph_size': [5],
-    'graph_generators': ['transpositions'],
+    #ARCHITECTURE
+    'graph_size': [10,20,30],
+    'graph_generators': ['trans_cycle_a',],
     'inverse': [True],
     'group_dtype': ['float32'],
     'initial_pos': ['SymmetricUniform'],
@@ -18,42 +18,53 @@ BASE_HP = {
         'kernel_options': {'kernel_initializer': 'Orthogonal', 'activation': 'tanh', 'implementation': 1}
     }],
     'reward_rescale': ['Trivial'],
-    'rew_fn': ['TwistedManhattan'],
-    'rew_param': [{'width': 1, 'scale': -100, 'exp': False, 'mini': 0.0}],
     'path_redraw': [0],
     'neighborhood': [0],
+    'length_cutoff': [30],
+    'embedding': [('cos', 'sin', 'natural')],
+
+    #REWARD
+    'rew_fn': ['TwistedManhattan'],
+    'rew_param': [{'width': 1, 'scale': -100, 'exp': False, 'mini': 0.0}],
     'heuristic_fn': ['R_zero'],
     'heuristic_param': [{}],
     'heuristic_factor': [0.0],
-    'length_cutoff': [10],
-    'embedding': [('cos', 'sin', 'natural')],
-    'reg_fn_gen': ['norm2'],
-    'reg_proj': ['AddReg'],
+    'rew_factor': [1.0],
+
+    #LOSS
+    'loss_cutoff': ['none'],
+    'loss_alpha': [2.0],
+
+    #REGULARIZATION
+    'reg_fn_gen': ['LogPathLen'],
+    'B_beta': [None],
+    'reg_proj': ['OrthReg'],
+    'reg_fn_logmin': [5.0],
+    'reg_fn_alpha_schedule': ['none'],
+    'alpha': [0.],
+
+    #TRAINING
     'batch_size': [64],
     'grad_batch_size': [1],
     'optimizer': ['AdamW'],
     'initial_flow': [0.001],
     'learning_rate': [0.001],
-
-
-    'reg_fn_logmin': [5.0],
-    'epochs': [2],
-    'B_beta': None,
-    'rew_factor': [1.0],
-    'loss_cutoff': ['none'],
     'lr_schedule': ['none'],
-    'reg_fn_alpha_schedule': ['none'],
-    'alpha':[0.],
-    'normalization_fn': [0],
-    'normalization_nu_fn': [0],
+    'epochs': [100],
     'step_per_epoch': [10],
-    'loss_alpha': [2.0],
+
+    #NORMALIZATION
+    'normalization_fn': [5],
+    'normalization_nu_fn': [5],
+
+    #HP_TUNING
     'tuning_method': ['fn_alpha_tune_grid'],
 }
 
+
 TUNER_HP = {
-    'alpha_range': [(-10, 10)],
-    'N_SAMPLE': [8],
+    'alpha_range': (10, 30),
+    'N_SAMPLE': 32,
 }
 
 SEED = list(rng.integers(1000, 10000, 128))[0:1]
