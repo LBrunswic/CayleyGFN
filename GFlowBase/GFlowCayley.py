@@ -209,7 +209,20 @@ class MultiGFlowCayleyLinear(tf.keras.Model):
         ))
         self.update_init_flow()
 
-    def evaluate(self, **kwargs):
+    def evaluate(self,**kwargs):
+        forward_edges = self.forward_edges
+        backward_edges = self.backward_edges
+        path_init_flow = self.path_init_flow
+        paths_reward = self.paths_reward
+        paths = forward_edges, backward_edges, path_init_flow, paths_reward
+        Flownu = self.FlowCompute(*paths)
+        for metric in self.metrics:
+            if metric.name == "loss":
+                continue
+            elif metric.name == "initflow":
+                continue
+            else:
+                metric.update_state(Flownu, None)
         return {m.name: tf.broadcast_to(m.result(),(self.ncopy,)) for m in self.metrics}
     # @tf.function
     def initflow_estimate(self):
@@ -277,3 +290,47 @@ class MultiGFlowCayleyLinear(tf.keras.Model):
             for m in self.metrics
             if m.name != 'loss'
             }
+    def compile_update_training_distribution(self):
+        print('COMPILE update train dist')
+        permute = tf.keras.layers.Permute((2, 1))
+
+        # self.embedding_layer = tf.keras.layers.Lambda(lambda x:self.model.graph.embedding_fn(x,axis=-2))
+        embedding_layer = self.graph.embedding_fn
+        Categorical = lambda F_r: tf.gather(
+            self.graph.actions,
+            tf.argmin(
+                tf.cumsum(F_r[:, :-1], axis=1) / tf.reduce_sum(F_r[:, :-1], axis=1,
+                                                                                   keepdims=True) < F_r[:, -1:],
+                axis=1
+            )
+        )
+
+        flow_base = tf.keras.Sequential([
+            tf.keras.layers.Reshape((1, 1, self.embedding_dim, self.ncopy)),
+            self.FlowEstimator,
+            tf.keras.layers.Lambda(lambda x: x[:, 0, 0], name='Squeeze')
+        ])
+
+
+        apply_action = tf.keras.layers.Lambda(
+            lambda gathered, pos: tf.linalg.matvec(gathered, pos, name='ApplyAction'))
+
+        seeded_uniform_positions = tf.keras.layers.Input(
+            shape=(self.path_length - 1 + self.graph.group_dim, self.ncopy))
+        seeded_uniform, position = tf.split(seeded_uniform_positions, [self.path_length - 1, self.graph.group_dim],
+                                            axis=1)
+        positions = [tf.cast(position, self.graph.group_dtype)]  # bjc
+        embedded_positions = [embedding_layer(positions[-1])]  # (bec)
+        actions = []
+        seeded_uniform_split = tf.split(seeded_uniform, self.path_length - 1, axis=1)
+        for i in range(self.path_length - 1):
+            F_r = tf.concat([flow_base(embedded_positions[-1]), seeded_uniform_split[i]], axis=1)
+            gathered = tf.cast(Categorical(F_r), self.graph.group_dtype ) # bcij
+            prev_pos = tf.cast(tf.transpose(positions[-1], perm=(0, 2, 1)), self.graph.group_dtype )
+            positions.append(
+                tf.cast(permute(tf.linalg.matvec(gathered, prev_pos, name='ApplyAction')),self.graph.group_dtype)  # bcij,bcj
+            )
+            embedded_positions.append(embedding_layer(positions[-1]))
+
+        outputs = tf.stack(positions, axis=1), tf.stack(embedded_positions, axis=1)
+        self.gen_path_model = tf.keras.Model(inputs=seeded_uniform_positions, outputs=outputs, name='Gen')

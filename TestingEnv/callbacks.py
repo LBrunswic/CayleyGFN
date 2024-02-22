@@ -14,6 +14,7 @@ class PandasRecord(tf.keras.callbacks.Callback):
         self.results = []
         self.hparams = hparams
         self.nflow = hparams['pool_size']
+
     def on_epoch_end(self, epoch, logs=None):
         # print(epoch)
         res = self.model.evaluate()
@@ -60,7 +61,7 @@ class ReplayBuffer(tf.keras.callbacks.Callback):
 
 
     def on_train_begin(self, logs=None):
-        self.compile_update_training_distribution()
+        self.model.compile_update_training_distribution()
 
 
     # def on_epoch_end(self, epoch, logs=None):
@@ -77,12 +78,16 @@ class ReplayBuffer(tf.keras.callbacks.Callback):
         self.update_training_distribution_callback(epoch)
         self.model.update_flow_init(schedule(epoch))
 
+    def evaluate(self):
+        for epoch in range(self.epoch_per_train):
+            self.update_training_distribution_callback(epoch)
+            self.model.evaluate()
 
     @tf.function
     def update_training_distribution_callback_aux(self, initial,seeded_uniform):
         print('RECOMPILE UPDATE',initial.shape)
         for j in tf.range(self.model.grad_batch_size):
-            true_paths, embedded_paths = self.gen_path_model(
+            true_paths, embedded_paths = self.model.gen_path_model(
                 tf.concat([seeded_uniform[j], tf.cast(initial[j], 'float32')], axis=1))
             self.model.paths_true[j].assign(true_paths)
             self.model.paths[j].assign(embedded_paths)
@@ -90,58 +95,14 @@ class ReplayBuffer(tf.keras.callbacks.Callback):
 
     def update_training_distribution_callback(self,epoch):
         initial = self.seeded_initial[epoch%self.epoch_per_train]
-        initial = tf.broadcast_to(initial,(*initial.shape[:-1], self.pool_size) )
+        initial = tf.broadcast_to(initial,(*initial.shape[:-1], self.pool_size))
         seeded_uniform = self.seeded_uniform[epoch%self.epoch_per_train]
         seeded_uniform = tf.broadcast_to(seeded_uniform, (*seeded_uniform.shape[:-1], self.pool_size))
         self.update_training_distribution_callback_aux(initial, seeded_uniform)
 
 
 
-    def compile_update_training_distribution(self):
-        print('COMPILE update train dist')
-        self.permute = tf.keras.layers.Permute((2, 1))
 
-        # self.embedding_layer = tf.keras.layers.Lambda(lambda x:self.model.graph.embedding_fn(x,axis=-2))
-        self.embedding_layer = self.model.graph.embedding_fn
-        self.Categorical = lambda F_r: tf.gather(
-            self.model.graph.actions,
-            tf.argmin(
-                tf.cumsum(F_r[:, :-1], axis=1) / tf.reduce_sum(F_r[:, :-1], axis=1,
-                                                                                   keepdims=True) < F_r[:, -1:],
-                axis=1
-            )
-        )
-
-        self.flow_base = tf.keras.Sequential([
-            tf.keras.layers.Reshape((1, 1, self.model.embedding_dim, self.model.ncopy)),
-            self.model.FlowEstimator,
-            tf.keras.layers.Lambda(lambda x: x[:, 0, 0], name='Squeeze')
-        ])
-
-
-
-        self.apply_action = tf.keras.layers.Lambda(
-            lambda gathered, pos: tf.linalg.matvec(gathered, pos, name='ApplyAction'))
-
-        seeded_uniform_positions = tf.keras.layers.Input(
-            shape=(self.model.path_length - 1 + self.model.graph.group_dim, self.model.ncopy))
-        seeded_uniform, position = tf.split(seeded_uniform_positions, [self.model.path_length - 1, self.model.graph.group_dim],
-                                            axis=1)
-        positions = [tf.cast(position, self.model.graph.group_dtype)]  # bjc
-        embedded_positions = [self.embedding_layer(positions[-1])]  # (bec)
-        actions = []
-        seeded_uniform_split = tf.split(seeded_uniform, self.model.path_length - 1, axis=1)
-        for i in range(self.model.path_length - 1):
-            F_r = tf.concat([self.flow_base(embedded_positions[-1]), seeded_uniform_split[i]], axis=1)
-            gathered = tf.cast(self.Categorical(F_r), self.model.graph.group_dtype ) # bcij
-            prev_pos = tf.cast(tf.transpose(positions[-1], perm=(0, 2, 1)), self.model.graph.group_dtype )
-            positions.append(
-                tf.cast(self.permute(tf.linalg.matvec(gathered, prev_pos, name='ApplyAction')),self.model.graph.group_dtype)  # bcij,bcj
-            )
-            embedded_positions.append(self.embedding_layer(positions[-1]))
-
-        outputs = tf.stack(positions, axis=1), tf.stack(embedded_positions, axis=1)
-        self.gen_path_model = tf.keras.Model(inputs=seeded_uniform_positions, outputs=outputs, name='Gen')
 
 class fn_alpha_tune_grid(tf.keras.callbacks.Callback):
     def __init__(self, epochs=10, alpha_range=None, N_SAMPLE=16, pool_size=1, seed=1234,**kwargs):

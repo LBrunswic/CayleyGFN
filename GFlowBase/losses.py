@@ -133,6 +133,7 @@ class MeanABError(tf.keras.losses.Loss):
         HP.update({f'B_{key}' : HP_B[key]  for key in HP_B})
         HP.update({'normalization_fn': self.normalization_fn.name})
         HP.update({'normalization_nu_fn': self.normalization_nu_fn.name})
+        HP.update({'cutoff': self.cutoff})
         return HP
 
     @tf.function

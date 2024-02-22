@@ -83,19 +83,19 @@ class PathAccuracy_gen(tf.keras.Model):
         return accuracy
 
 
-class Norm2_gen(tf.keras.Model):
+class Norm_gen(tf.keras.Model):
     """Regularization class implementing a scaled L2 norm
 
     """
-    def __init__(self, alpha, logpmin, **kwargs):
-        super(Norm2_gen, self).__init__(name='Norm2_fn', **kwargs)
-        self.alpha = tf.Variable(tf.math.exp(alpha), trainable=False, dtype='float32')
-        self.logpmin = tf.Variable(logpmin, trainable=False, dtype='float32')
+    def __init__(self, alpha=2, beta=1, **kwargs):
+        super(Norm_gen, self).__init__(name='Norm2_fn', **kwargs)
+        self.alpha = tf.Variable(alpha, trainable=False, dtype='float32')
+        self.beta = tf.Variable(beta, trainable=False, dtype='float32')
 
     @tf.function
     def call(self,Flownu):
         return tf.reduce_sum(
-            tf.reduce_mean(tf.linalg.norm(Flownu[..., 0] + Flownu[..., 1], ord=2, axis=1)**2, axis=0)
+            tf.reduce_mean(tf.linalg.norm(Flownu[..., 0] + Flownu[..., 1], ord=self.alpha, axis=1)**self.beta, axis=0)
         )
 
 
