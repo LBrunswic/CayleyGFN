@@ -108,5 +108,5 @@ reg_post_choices = {
 reg_fn_gen_choices = {
     'LogPathLen': LogPathLen_gen,
     'LogEPathLen': LogEPathLen_gen,
-    'norm2': Norm2_gen,
+    'norm2': Norm_gen,
 }
