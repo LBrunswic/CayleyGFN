@@ -106,7 +106,10 @@ class TheoreticalPathwiseDensityNormalized(BaseModel):
     def call(self, flownu, init):
         R = flownu[..., 2]
         nu = tf.math.cumsum(R,axis=1,reverse=True)
-        return nu/(1e-10+tf.math.sum(R,axis=0,keepdims=True))
+        # nu = nu / tf.reduce_sum(nu, axis=1, keepdims=True)
+        nu = nu / (1e-10 + tf.reduce_sum(R, axis=0, keepdims=True))
+
+        return nu
 
 normalization_nu_fns = [
     SelfDensity(),
