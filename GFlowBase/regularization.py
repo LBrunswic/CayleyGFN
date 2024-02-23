@@ -95,7 +95,7 @@ class Norm_gen(tf.keras.Model):
     @tf.function
     def call(self,Flownu):
         return tf.reduce_sum(
-            tf.reduce_mean(tf.linalg.norm(Flownu[..., 0] + Flownu[..., 1], ord=self.alpha, axis=1), axis=0)
+            tf.reduce_mean(tf.linalg.norm(Flownu[..., 0] + Flownu[..., 1], ord=2, axis=1), axis=0)
         )
 
 
