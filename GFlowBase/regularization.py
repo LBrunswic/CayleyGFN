@@ -87,7 +87,7 @@ class Norm_gen(tf.keras.Model):
     """Regularization class implementing a scaled L2 norm
 
     """
-    def __init__(self, alpha=2, beta=1, **kwargs):
+    def __init__(self,logpmin=None, alpha=2, beta=1, **kwargs):
         super(Norm_gen, self).__init__(name='Norm2_fn', **kwargs)
         self.alpha = tf.Variable(alpha, trainable=False, dtype='float32')
         self.beta = tf.Variable(beta, trainable=False, dtype='float32')
