@@ -89,7 +89,7 @@ class Norm_gen(tf.keras.Model):
     """
     def __init__(self,logpmin=None, alpha=2, beta=1, **kwargs):
         super(Norm_gen, self).__init__(name='Norm2_fn', **kwargs)
-        self.alpha = alpha
+        self.alpha = tf.Variable(beta, trainable=False, dtype='float32')
         self.beta = tf.Variable(beta, trainable=False, dtype='float32')
 
     @tf.function
