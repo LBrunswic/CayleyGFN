@@ -209,20 +209,29 @@ class MultiGFlowCayleyLinear(tf.keras.Model):
         ))
         self.update_init_flow()
 
-    def evaluate(self,**kwargs):
-        forward_edges = self.forward_edges
-        backward_edges = self.backward_edges
-        path_init_flow = self.path_init_flow
-        paths_reward = self.paths_reward
-        paths = forward_edges, backward_edges, path_init_flow, paths_reward
-        Flownu = self.FlowCompute(*paths)
+    def evaluate(self,seeded_initial, seeded_uniform,**kwargs):
         for metric in self.metrics:
             if metric.name == "loss":
                 continue
             elif metric.name == "initflow":
                 continue
             else:
-                metric.update_state(Flownu, None)
+                metric.reset_state()
+        for eval_epoch in range(len(seeded_initial)):
+            initial = seeded_initial[eval_epoch]
+            initial = tf.broadcast_to(initial, (*initial.shape[:-1], self.pool_size))
+            uniform = seeded_uniform[eval_epoch]
+            uniform = tf.broadcast_to(uniform, (*uniform.shape[:-1], self.pool_size))
+            self.update_training_distribution(initial, uniform)
+            paths = self.forward_edges, self.backward_edges, self.path_init_flow, self.paths_reward
+            Flownu = self.FlowCompute(*paths)
+            for metric in self.metrics:
+                if metric.name == "loss":
+                    continue
+                elif metric.name == "initflow":
+                    continue
+                else:
+                    metric.update_state(Flownu, None)
         return {m.name: tf.broadcast_to(m.result(),(self.ncopy,)) for m in self.metrics}
     # @tf.function
     def initflow_estimate(self):
@@ -334,3 +343,13 @@ class MultiGFlowCayleyLinear(tf.keras.Model):
 
         outputs = tf.stack(positions, axis=1), tf.stack(embedded_positions, axis=1)
         self.gen_path_model = tf.keras.Model(inputs=seeded_uniform_positions, outputs=outputs, name='Gen')
+
+    @tf.function
+    def update_training_distribution(self, initial, seeded_uniform):
+        print('RECOMPILE UPDATE',initial.shape)
+        for j in tf.range(self.grad_batch_size):
+            true_paths, embedded_paths = self.gen_path_model(
+                tf.concat([seeded_uniform[j], tf.cast(initial[j], 'float32')], axis=1))
+            self.paths_true[j].assign(true_paths)
+            self.paths[j].assign(embedded_paths)
+            self.update_training_distribution_gflow()

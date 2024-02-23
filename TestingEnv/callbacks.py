@@ -8,16 +8,25 @@ from datetime import datetime
 from utils.utils import concat_dict_of_ndarray
 
 class PandasRecord(tf.keras.callbacks.Callback):
-    def __init__(self,hparams,loss,epoch_period = 10):
-        self.epoch_period = epoch_period
+    def __init__(self,hparams,loss):
+        self.epoch_period = hparams['epochs']
         self.loss = loss
         self.results = []
         self.hparams = hparams
         self.nflow = hparams['pool_size']
+        self.seeded_uniform = tf.random.stateless_uniform(
+            (hparams['bench_n_batch'], hparams['grad_batch_size'], hparams['bench_batch_size'], hparams['length_cutoff'] - 1, 1),
+            (hparams['bench_seed'], hparams['bench_seed']),
+            dtype='float32'
+        )
+        self.seeded_initial = self.model.graph.sample(
+            shape=(hparams['bench_n_batch'], hparams['grad_batch_size'], hparams['bench_batch_size'], 1),
+            axis=-2
+        )
 
     def on_epoch_end(self, epoch, logs=None):
         # print(epoch)
-        res = self.model.evaluate()
+        res = self.model.evaluate(self.seeded_initial, self.seeded_uniform)
         episode = epoch//self.epoch_period
         true_epoch = 1+epoch % self.epoch_period
         res.update({
@@ -83,22 +92,13 @@ class ReplayBuffer(tf.keras.callbacks.Callback):
             self.update_training_distribution_callback(epoch)
             self.model.evaluate()
 
-    @tf.function
-    def update_training_distribution_callback_aux(self, initial,seeded_uniform):
-        print('RECOMPILE UPDATE',initial.shape)
-        for j in tf.range(self.model.grad_batch_size):
-            true_paths, embedded_paths = self.model.gen_path_model(
-                tf.concat([seeded_uniform[j], tf.cast(initial[j], 'float32')], axis=1))
-            self.model.paths_true[j].assign(true_paths)
-            self.model.paths[j].assign(embedded_paths)
-            self.model.update_training_distribution_gflow()
 
     def update_training_distribution_callback(self,epoch):
         initial = self.seeded_initial[epoch%self.epoch_per_train]
         initial = tf.broadcast_to(initial,(*initial.shape[:-1], self.pool_size))
         seeded_uniform = self.seeded_uniform[epoch%self.epoch_per_train]
         seeded_uniform = tf.broadcast_to(seeded_uniform, (*seeded_uniform.shape[:-1], self.pool_size))
-        self.update_training_distribution_callback_aux(initial, seeded_uniform)
+        self.model.update_training_distribution(initial, seeded_uniform)
 
 
 

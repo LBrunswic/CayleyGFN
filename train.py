@@ -114,7 +114,7 @@ def train_test_model(hparams,logger):
         pool_size=hparams['pool_size'],
     )
     callback_hp_tune = tuning_method[hparams['tuning_method']](**hparams)
-    pandas_record = PandasRecord(hparams, loss, epoch_period=hparams['epochs'])
+    pandas_record = PandasRecord(hparams, loss)
     Replay.reward = hparams['rew_fn']
     memory_use = MemoryUse()
     for m in metrics:
