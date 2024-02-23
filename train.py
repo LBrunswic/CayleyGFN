@@ -114,7 +114,19 @@ def train_test_model(hparams,logger):
         pool_size=hparams['pool_size'],
     )
     callback_hp_tune = tuning_method[hparams['tuning_method']](**hparams)
-    pandas_record = PandasRecord(hparams, loss)
+
+    banch_seeded_uniform = tf.random.stateless_uniform(
+        (
+        hparams['bench_n_batch'], hparams['grad_batch_size'], hparams['bench_batch_size'], hparams['length_cutoff'] - 1,
+        1),
+        (hparams['bench_seed'], hparams['bench_seed']),
+        dtype='float32'
+    )
+    bench_seeded_initial = flow.graph.sample(
+        shape=(hparams['bench_n_batch'], hparams['grad_batch_size'], hparams['bench_batch_size'], 1),
+        axis=-2
+    )
+    pandas_record = PandasRecord(hparams, loss,banch_seeded_uniform,bench_seeded_initial)
     Replay.reward = hparams['rew_fn']
     memory_use = MemoryUse()
     for m in metrics:

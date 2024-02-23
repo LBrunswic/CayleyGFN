@@ -8,21 +8,15 @@ from datetime import datetime
 from utils.utils import concat_dict_of_ndarray
 
 class PandasRecord(tf.keras.callbacks.Callback):
-    def __init__(self,hparams,loss):
+    def __init__(self,hparams,loss, banch_seeded_uniform,bench_seeded_initial, **kwargs):
         self.epoch_period = hparams['epochs']
         self.loss = loss
         self.results = []
         self.hparams = hparams
         self.nflow = hparams['pool_size']
-        self.seeded_uniform = tf.random.stateless_uniform(
-            (hparams['bench_n_batch'], hparams['grad_batch_size'], hparams['bench_batch_size'], hparams['length_cutoff'] - 1, 1),
-            (hparams['bench_seed'], hparams['bench_seed']),
-            dtype='float32'
-        )
-        self.seeded_initial = self.model.graph.sample(
-            shape=(hparams['bench_n_batch'], hparams['grad_batch_size'], hparams['bench_batch_size'], 1),
-            axis=-2
-        )
+        self.seeded_uniform = banch_seeded_uniform
+        self.seeded_initial = bench_seeded_initial
+
 
     def on_epoch_end(self, epoch, logs=None):
         # print(epoch)
