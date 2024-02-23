@@ -219,9 +219,9 @@ class MultiGFlowCayleyLinear(tf.keras.Model):
                 metric.reset_state()
         for eval_epoch in range(len(seeded_initial)):
             initial = seeded_initial[eval_epoch]
-            initial = tf.broadcast_to(initial, (*initial.shape[:-1], self.pool_size))
+            initial = tf.broadcast_to(initial, (*initial.shape[:-1], self.ncopy))
             uniform = seeded_uniform[eval_epoch]
-            uniform = tf.broadcast_to(uniform, (*uniform.shape[:-1], self.pool_size))
+            uniform = tf.broadcast_to(uniform, (*uniform.shape[:-1], self.ncopy))
             self.update_training_distribution(initial, uniform)
             paths = self.forward_edges, self.backward_edges, self.path_init_flow, self.paths_reward
             Flownu = self.FlowCompute(*paths)
