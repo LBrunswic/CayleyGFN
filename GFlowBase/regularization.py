@@ -89,13 +89,13 @@ class Norm_gen(tf.keras.Model):
     """
     def __init__(self,logpmin=None, alpha=2, beta=1, **kwargs):
         super(Norm_gen, self).__init__(name='Norm2_fn', **kwargs)
-        self.alpha = tf.Variable(alpha, trainable=False, dtype='float32')
+        self.alpha = alpha
         self.beta = tf.Variable(beta, trainable=False, dtype='float32')
 
     @tf.function
     def call(self,Flownu):
         return tf.reduce_sum(
-            tf.reduce_mean(tf.linalg.norm(Flownu[..., 0] + Flownu[..., 1], ord=2, axis=1), axis=0)
+            tf.reduce_mean(tf.linalg.norm(Flownu[..., 0] + Flownu[..., 1], ord=2, axis=1)**self.beta, axis=0)
         )
 
 

@@ -262,24 +262,9 @@ class MultiGFlowCayleyLinear(tf.keras.Model):
             reg = self.reg_fn(Flownu)
             loss = self.compiled_loss(Flownu, self.initflow_estimate())
         trainable_vars = self.trainable_variables
-        # gradients = tape.jacobian(loss, trainable_vars)
-        s = 1.
-        # if i == self.grad_batch_size-1:
-        #     s = 1/self.grad_batch_size
-        # if i == 0:
         loss_gradients = tape.gradient(loss, trainable_vars,unconnected_gradients=tf.UnconnectedGradients.ZERO)
         reg_gradients = tape.gradient(reg, trainable_vars,unconnected_gradients=tf.UnconnectedGradients.ZERO)
-        # else:
-        #     loss_gradients = gradient_add_scalar(
-        #         self,
-        #         tape.gradient(loss, trainable_vars,unconnected_gradients=tf.UnconnectedGradients.ZERO),
-        #         loss_gradients, s
-        #     )
-        #     reg_gradients = gradient_add_scalar(
-        #         self,
-        #         tape.gradient(reg, trainable_vars,unconnected_gradients=tf.UnconnectedGradients.ZERO),
-        #         reg_gradients, s
-        #     )
+
         for metric in self.metrics:
             # print(metric)
             if metric.name == "loss":
@@ -292,8 +277,6 @@ class MultiGFlowCayleyLinear(tf.keras.Model):
         a = zip(self.reg_post(self, loss_gradients, reg_gradients,scaling=self.reg_fn.alpha), trainable_vars)
         self.optimizer.apply_gradients(a)
         print('COMPILE')
-        # for  m in self.metrics:
-        #     print(m.name,m.result())
         return {
             m.name : m.result()[0]
             for m in self.metrics

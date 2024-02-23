@@ -72,7 +72,7 @@ class ReplayBuffer(tf.keras.callbacks.Callback):
     def on_epoch_begin(self, epoch, logs=None):
 
         def schedule(epoch):
-            if epoch%self.epoch_per_train == 0:
+            if epoch%self.epoch_per_train <= 1:
                 return (0., 1.)
             elif epoch%self.epoch_per_train < 6:
                 return (0.90, 0.1)

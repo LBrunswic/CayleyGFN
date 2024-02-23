@@ -92,6 +92,21 @@ class TheoreticalPathwiseDensityModerationExpectedLength(BaseModel):
         R = flownu[..., 2]
         return tf.math.cumsum(R,axis=1,reverse=True)/tf.reduce_mean((1+tf.reduce_sum(tf.math.exp(flownu[..., 4]), axis=1, keepdims=True)), axis=0, keepdims=True)
 
+class TheoreticalPathwiseDensityNormalized(BaseModel):
+    """ TODO
+
+        args:
+            flownu: tf tensor of shape (batch_size, path_length, n_flow, 5).
+                The last axis contains (F_i^*,F_o^*,R/r, F(init->\cdot)/F_o(init), log P(tau>t|s_\dot), R)
+            init: F_o(init)021
+    """
+    def __init__(self, name="TheoreticalPathwiseDensityNormalized", **kwargs):
+        super(TheoreticalPathwiseDensityNormalized, self).__init__(name=name, **kwargs)
+
+    def call(self, flownu, init):
+        R = flownu[..., 2]
+        nu = tf.math.cumsum(R,axis=1,reverse=True)
+        return nu/(1e-10+tf.math.sum(R,axis=0,keepdims=True))
 
 normalization_nu_fns = [
     SelfDensity(),
@@ -100,4 +115,5 @@ normalization_nu_fns = [
     TheoreticalPathwiseDensity(),
     TheoreticalPathwiseDensityModerationExpectedLength(),
     TheoreticalPathwiseDensityModerationPathwiseExpectedLength(),
+    TheoreticalPathwiseDensityNormalized()
 ]
