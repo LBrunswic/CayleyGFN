@@ -48,6 +48,7 @@ def model_gen(hparams,logger):
         alpha=(0.,) * hparams['pool_size'],
         logpmin=hparams['reg_fn_logmin'],
     )
+    print(reg_fn)
     logger.debug('reg_fn: %s' % reg_fn)
 
     flow = MultiGFlowCayleyLinear(
