@@ -118,13 +118,13 @@ def train_test_model(hparams,logger):
 
     banch_seeded_uniform = tf.random.stateless_uniform(
         (
-        hparams['bench_n_batch'], hparams['grad_batch_size'], hparams['bench_batch_size'], hparams['length_cutoff'] - 1,
+        hparams['batch_size'], hparams['grad_batch_size'], hparams['batch_size'], hparams['length_cutoff'] - 1,
         1),
         (hparams['bench_seed'], hparams['bench_seed']),
         dtype='float32'
     )
     bench_seeded_initial = flow.graph.sample(
-        shape=(hparams['bench_n_batch'], hparams['grad_batch_size'], hparams['bench_batch_size'], 1),
+        shape=(hparams['bench_n_batch'], hparams['grad_batch_size'], hparams['batch_size'], 1),
         axis=-2
     )
     pandas_record = PandasRecord(hparams, loss,banch_seeded_uniform,bench_seeded_initial)
