@@ -1,13 +1,13 @@
 import tensorflow as tf
 @tf.function
-def straight_reg(self,loss_gradients,reg_gradients,scaling=1.0):
+def straight_reg(self,loss_gradients,reg_gradients,scaling):
     n_train = self.n_train
     res = [loss_gradients[i] + scaling*reg_gradients[i] for i in range(n_train)]
     return res
 
 
 @tf.function
-def proj_reg(self, loss_gradients, reg_gradients,scaling=1.0):
+def proj_reg(self, loss_gradients, reg_gradients, scaling):
     n_train = self.n_train
     res = [
         loss_gradients[i]
@@ -17,7 +17,7 @@ def proj_reg(self, loss_gradients, reg_gradients,scaling=1.0):
     return res
 
 @tf.function
-def scaled_proj_reg(self, loss_gradients, reg_gradients,scaling=1.0):
+def scaled_proj_reg(self, loss_gradients, reg_gradients, scaling):
     n_train = self.n_train
     res = [
         loss_gradients[i]

@@ -117,7 +117,7 @@ class fn_alpha_tune_grid(tf.keras.callbacks.Callback):
         if epoch % self.epoch_per_train == 0:
             self.current_experiments += 1
             self.model.reinitialize()
-            self.model.reg_fn.alpha.assign(self.alpha_range[self.current_experiments])
+            self.model.reg_fn.alpha.assign(tf.math.exp(self.alpha_range[self.current_experiments]))
 
 
 class fn_alpha_tune_search(tf.keras.callbacks.Callback):

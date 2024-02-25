@@ -274,7 +274,7 @@ class MultiGFlowCayleyLinear(tf.keras.Model):
             else:
                 metric.update_state(Flownu, reg_gradients)
         self.reward_rescale_estimator.update_state(Flownu)
-        a = zip(self.reg_post(self, loss_gradients, reg_gradients,scaling=self.reg_fn.alpha), trainable_vars)
+        a = zip(self.reg_post(self, loss_gradients, reg_gradients,self.reg_fn.alpha), trainable_vars)
         self.optimizer.apply_gradients(a)
         print('COMPILE')
         return {
