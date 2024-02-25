@@ -1,6 +1,6 @@
 import os
 import argparse
-from time import sleep
+from time import sleep,time
 parser = argparse.ArgumentParser(
                     prog='CayleyGFN',
                     description='Launch batch of experiment',
@@ -62,7 +62,9 @@ for hp_file_name in os.listdir(FOLDER):
     if not os.path.exists(data_save):
         print(f'Launching {hp_file_path} -> {data_save}...')
         if args['test'] == 0:
+            T = time()
             os.system(f"python3 docker_main.py --gpu={args['gpu']} --pool_size={args['pool_size']} --hp_file={hp_file_path}")
+            print(f'Done in {time()-T}')
         print('done!')
     else:
         print(f'{hp_file_path} already done! The file {data_save} exists!')

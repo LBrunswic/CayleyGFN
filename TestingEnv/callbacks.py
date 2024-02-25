@@ -8,7 +8,7 @@ from datetime import datetime
 from utils.utils import concat_dict_of_ndarray
 
 class PandasRecord(tf.keras.callbacks.Callback):
-    def __init__(self,hparams,loss, banch_seeded_uniform,bench_seeded_initial, **kwargs):
+    def __init__(self,hparams,loss, banch_seeded_uniform,bench_seeded_initial,record_period=10, **kwargs):
         self.epoch_period = hparams['epochs']
         self.loss = loss
         self.results = []
@@ -16,39 +16,40 @@ class PandasRecord(tf.keras.callbacks.Callback):
         self.nflow = hparams['pool_size']
         self.seeded_uniform = banch_seeded_uniform
         self.seeded_initial = bench_seeded_initial
-
+        self.record_period = record_period
 
     def on_epoch_end(self, epoch, logs=None):
         # print(epoch)
-        res = self.model.evaluate(self.seeded_initial, self.seeded_uniform)
-        episode = epoch//self.epoch_period
-        true_epoch = 1+epoch % self.epoch_period
-        res.update({
-            key: [self.hparams[key]]*self.nflow
-            for key in self.hparams
-            if not isinstance(self.hparams[key],tuple)
-        })
-        res.update({'epoch': np.array([true_epoch]*self.nflow)})
-        res.update({'episode': [episode] * self.nflow})
-        loss_HP = self.loss.HP()
-        res.update({key: [loss_HP[key]] * self.nflow for key in loss_HP})
+        if epoch % self.record_period == 0:
+            res = self.model.evaluate(self.seeded_initial, self.seeded_uniform)
+            episode = epoch//self.epoch_period
+            true_epoch = 1+epoch % self.epoch_period
+            res.update({
+                key: [self.hparams[key]]*self.nflow
+                for key in self.hparams
+                if not isinstance(self.hparams[key],tuple)
+            })
+            res.update({'epoch': np.array([true_epoch]*self.nflow)})
+            res.update({'episode': [episode] * self.nflow})
+            loss_HP = self.loss.HP()
+            res.update({key: [loss_HP[key]] * self.nflow for key in loss_HP})
 
-        for key in self.hparams:
-            if isinstance(self.hparams[key],tuple):
-                res.update({key: [str(self.hparams[key])]*self.nflow })
-        res.update({'reg_fn_alpha': self.model.reg_fn.alpha.numpy()})
-        for key in res:
-            if isinstance(res[key],tf.Tensor):
-                res[key] = res[key].numpy()
-            elif isinstance(res[key],list):
-                res[key] = np.array(res[key])
-            elif isinstance(res[key],str):
-                print(key,res[key])
-                raise
-            elif len(res[key].shape)>1:
-                pass
+            for key in self.hparams:
+                if isinstance(self.hparams[key],tuple):
+                    res.update({key: [str(self.hparams[key])]*self.nflow })
+            res.update({'reg_fn_alpha': self.model.reg_fn.alpha.numpy()})
+            for key in res:
+                if isinstance(res[key],tf.Tensor):
+                    res[key] = res[key].numpy()
+                elif isinstance(res[key],list):
+                    res[key] = np.array(res[key])
+                elif isinstance(res[key],str):
+                    # print(key,res[key])
+                    raise
+                elif len(res[key].shape)>1:
+                    pass
 
-        self.results.append(res)
+            self.results.append(res)
     def on_train_end(self, logs=None):
         self.results = pandas.DataFrame(concat_dict_of_ndarray(self.results))
 
