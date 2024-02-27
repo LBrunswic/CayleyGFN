@@ -121,7 +121,7 @@ class TheoreticalPathwiseDensityNormalizedPlusSelfDensity(BaseModel):
             init: F_o(init)021
     """
 
-    def __init__(self, name="TheoreticalPathwiseDensityNormalized", **kwargs):
+    def __init__(self, name="TheoreticalPathwiseDensityNormalizedPlusSelfDensity", **kwargs):
         super(TheoreticalPathwiseDensityNormalizedPlusSelfDensity, self).__init__(name=name, **kwargs)
 
     def call(self, flownu, init):
