@@ -116,6 +116,7 @@ def train_test_model(hparams,logger):
     )
     callback_hp_tune = tuning_method[hparams['tuning_method']](**hparams)
 
+    hparams.update({'bench_n_batch' : hparams['bench_batch_size'] // hparams['batch_size']})
     banch_seeded_uniform = tf.random.stateless_uniform(
         (
         hparams['batch_size'], hparams['grad_batch_size'], hparams['batch_size'], hparams['length_cutoff'] - 1,
