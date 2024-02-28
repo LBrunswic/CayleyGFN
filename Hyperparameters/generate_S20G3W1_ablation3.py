@@ -44,7 +44,7 @@ BASE_HP = {
     'alpha': [0.],
 
     #TRAINING
-    'batch_size': [512],
+    'batch_size': [2048],
     'grad_batch_size': [1],
     'optimizer': ['AdamW'],
     'initial_flow': [0.001],
@@ -55,8 +55,8 @@ BASE_HP = {
     'path_strategy': ['baseline','best_reward'],
 
     #NORMALIZATION
-    'normalization_fn': [4],
-    'normalization_nu_fn': [2],
+    'normalization_fn': [0,1],
+    'normalization_nu_fn': [0,5],
 
     #HP_TUNING
     'tuning_method': ['fn_alpha_tune_grid'],
