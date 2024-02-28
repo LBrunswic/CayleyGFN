@@ -109,7 +109,7 @@ def train_test_model(hparams,logger):
         axis=-2
     )
     if 'path_strategy' in hparams:
-        hparams['path_strategy'] = strategies[hparams['path_strategy']]
+        hparams['path_strategy'] = strategies[hparams['path_strategy']()]
 
     Replay = ReplayBuffer(
         epoch_per_train=hparams['epochs'],
