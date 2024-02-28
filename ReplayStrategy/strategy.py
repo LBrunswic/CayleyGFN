@@ -21,7 +21,7 @@ class best_reward:
         p=np.sum(memory['paths_reward'], axis=1)+self.delta
         p = p / np.sum(p)
         rank = self.rng.choice(
-            a=np.arange(memory['paths_true'].shape[0]),
+            a=np.arange(memory['paths_true'].shape[0],dtype='uint32'),
             size=shape[1],
             replace=False,
             p=p
