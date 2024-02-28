@@ -16,10 +16,7 @@ class best_reward:
         }
     def __call__(self, memory, shape):
         assert(isinstance(memory['paths_true'],np.ndarray))
-        print(np.sum(memory['paths_reward'], axis=1)+self.delta)
-        print((np.sum(memory['paths_reward'], axis=1)+self.delta).shape)
         p=np.sum(memory['paths_reward'], axis=1)+self.delta
-        print(memory['paths_true'].dtype)
         p = p / np.sum(p)
         rank = self.rng.choice(
             a=np.arange(memory['paths_true'].shape[0],dtype='uint32'),
@@ -30,8 +27,6 @@ class best_reward:
 
         s_true = memory['paths_true'][rank].shape
         s_embedded = memory['paths_embedded'][rank].shape
-        print('A', s_true)
-        print('B', s_embedded)
         return memory['paths_true'][rank].reshape((1,*s_true,1)), memory['paths_embedded'][rank].reshape((1,*s_embedded,1))
 
 strategies = {
