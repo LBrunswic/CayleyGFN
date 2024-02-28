@@ -109,10 +109,10 @@ class ReplayBuffer(tf.keras.callbacks.Callback):
 
     def memorize(self):
         if self.memory['paths_true'] is None:
-            self.memory['paths_true'] = self.model.paths_true.numpy()
-            self.memory['paths_embedded'] = self.model.paths.numpy()
-            self.memory['paths_reward'] = self.model.paths_reward.numpy()
-            self.memory['path_init_flow'] = self.model.path_init_flow.numpy()
+            self.memory['paths_true'] = self.model.paths_true[0,...,0].numpy()
+            self.memory['paths_embedded'] = self.model.paths[0,...,0].numpy()
+            self.memory['paths_reward'] = self.model.paths_reward[0,...,0].numpy()
+            self.memory['path_init_flow'] = self.model.path_init_flow[0,...,0].numpy()
         else:
             self.memory['paths_true'] = tf.concat([self.memory['paths_true'], self.model.paths_true[0,...,0]], axis=0)
             self.memory['paths_embedded'] = tf.concat([self.memory['paths_embedded'], self.model.paths[0,...,0]], axis=0)
