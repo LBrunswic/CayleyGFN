@@ -29,6 +29,17 @@ class best_reward:
         s_embedded = memory['paths_embedded'][rank].shape
         return memory['paths_true'][rank].reshape((1,*s_true,1)), memory['paths_embedded'][rank].reshape((1,*s_embedded,1))
 
+class baseline:
+    def __init__(self,delta=0.01):
+        self.name = 'baseline'
+
+    def HP(self):
+        return {
+            'strat_name': self.name
+        }
+
+
 strategies = {
     'best_reward' : best_reward,
+    'baseline' : baseline,
 }

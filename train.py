@@ -108,8 +108,10 @@ def train_test_model(hparams,logger):
         shape=(hparams['epochs'], hparams['grad_batch_size'], hparams['batch_size'],1),
         axis=-2
     )
-    if 'path_strategy' in hparams:
-        hparams['path_strategy'] = strategies[hparams['path_strategy']]()
+    if 'path_strategy' in hparams and hparams['path_strategy'] is not None:
+            hparams['path_strategy'] = strategies[hparams['path_strategy']]()
+
+
 
     Replay = ReplayBuffer(
         epoch_per_train=hparams['epochs'],

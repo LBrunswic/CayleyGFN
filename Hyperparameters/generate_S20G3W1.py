@@ -55,8 +55,8 @@ BASE_HP = {
     'path_strategy': ['baseline','best_reward'],
 
     #NORMALIZATION
-    'normalization_fn': [1],
-    'normalization_nu_fn': [5],
+    'normalization_fn': [0],
+    'normalization_nu_fn': [0],
 
     #HP_TUNING
     'tuning_method': ['fn_alpha_tune_grid'],
@@ -68,11 +68,11 @@ BASE_HP = {
 
 
 TUNER_HP = {
-    'alpha_range': (-0.7, -0.7),
-    'N_SAMPLE': 1,
+    'alpha_range': (-1.4, 1.4),
+    'N_SAMPLE': 5,
 }
 
-SEED = list(rng.integers(1000, 10000, 128))[0:4]
+SEED = list(rng.integers(1000, 10000, 128))[0:16]
 
 
 VARIALE_HP = {

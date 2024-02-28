@@ -99,7 +99,7 @@ class ReplayBuffer(tf.keras.callbacks.Callback):
         seeded_uniform = tf.broadcast_to(seeded_uniform, (*seeded_uniform.shape[:-1], self.pool_size))
         self.model.generate_update_training_distribution(initial, seeded_uniform)
         self.memorize()
-        if self.replay_strategy is not None:
+        if self.replay_strategy is not None and self.replay_strategy.name != 'baseline':
             self.model.update_training_distribution(*self.replay_strategy(self.memory, self.model.paths_true.shape))
 
     def memorize(self):
