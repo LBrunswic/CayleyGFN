@@ -339,8 +339,8 @@ class MultiGFlowCayleyLinear(tf.keras.Model):
 
     # @tf.function
     def update_training_distribution(self, true_paths, embedded_paths):
-        print('A',true_paths.shape)
-        print('B',embedded_paths.shape)
+        print('A1',true_paths.shape)
+        print('B1',embedded_paths.shape)
         for j in tf.range(self.grad_batch_size):
             self.paths_true[j].assign(true_paths[j])
             self.paths[j].assign(embedded_paths[j])
