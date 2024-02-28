@@ -74,10 +74,7 @@ logger = get_logger(
 )
 T = time()
 result, returns, flow = train_test_model(experiments_hparams, logger)
-data_save = os.path.join(
-    'RESULTS',
-    args['save']
-)
+data_save = args['save']
 result.to_csv(data_save)
 dt = (time()-T)/3600
 logger.info(f"{experiments_hparams['N_SAMPLE']} experiments done in { (time()-T)/60} minutes. So {experiments_hparams['N_SAMPLE']/dt} experiments per hours.")
