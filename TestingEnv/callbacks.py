@@ -111,13 +111,13 @@ class ReplayBuffer(tf.keras.callbacks.Callback):
         if self.memory['paths_true'] is None:
             self.memory['paths_true'] = self.model.paths_true[0,...,0].numpy()
             self.memory['paths_embedded'] = self.model.paths[0,...,0].numpy()
-            self.memory['paths_reward'] = self.model.paths_reward[0,...,0].numpy()
-            self.memory['path_init_flow'] = self.model.path_init_flow[0,...,0].numpy()
+            self.memory['paths_reward'] = self.model.paths_reward[...,0].numpy()
+            self.memory['path_init_flow'] = self.model.path_init_flow[...,0].numpy()
         else:
             self.memory['paths_true'] = tf.concat([self.memory['paths_true'], self.model.paths_true[0,...,0]], axis=0)
             self.memory['paths_embedded'] = tf.concat([self.memory['paths_embedded'], self.model.paths[0,...,0]], axis=0)
-            self.memory['paths_reward'] = tf.concat([self.memory['paths_reward'], self.model.paths_reward[0,...,0]], axis=0)
-            self.memory['path_init_flow'] = tf.concat([self.memory['path_init_flow'], self.model.path_init_flow[0,...,0]], axis=0)
+            self.memory['paths_reward'] = tf.concat([self.memory['paths_reward'], self.model.paths_reward[...,0]], axis=0)
+            self.memory['path_init_flow'] = tf.concat([self.memory['path_init_flow'], self.model.path_init_flow[...,0]], axis=0)
         print(self.memory['paths_true'].shape)
         print(self.memory['paths_embedded'].shape)
         print(self.memory['paths_reward'].shape)
