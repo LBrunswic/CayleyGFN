@@ -35,9 +35,9 @@ FIXED_HP = {
     'reward_rescale': 'Trivial',
     'loss_cutoff': 'none',
     'lr_schedule': 'none',
-    'reg_fn_alpha_schedule': 'none',
+    'tuning_param_schedule': 'none',
     'group_dtype': 'float32',
-    'reg_fn_alpha': (-3, 6),
+    'tuning_param': (-3, 6),
 }
 
 VARIANLE_HP = {
