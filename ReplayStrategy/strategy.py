@@ -29,8 +29,8 @@ class best_reward:
 
         s_true = memory['paths_true'][rank].shape
         s_embedded = memory['paths_embedded'][rank].shape
-        print('A',s_true)
-        print('B',s_embedded)
+        print('A', s_true)
+        print('B', s_embedded)
         return memory['paths_true'][rank].reshape((1,*s_true,1)), memory['paths_embedded'][rank].reshape((1,*s_embedded,1))
 
 strategies = {
