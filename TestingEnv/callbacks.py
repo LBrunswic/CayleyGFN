@@ -118,8 +118,10 @@ class ReplayBuffer(tf.keras.callbacks.Callback):
             self.memory['paths_embedded'] = tf.concat([self.memory['paths_embedded'], self.model.paths[0,...,0]], axis=0)
             self.memory['paths_reward'] = tf.concat([self.memory['paths_reward'], self.model.paths_reward[0,...,0]], axis=0)
             self.memory['path_init_flow'] = tf.concat([self.memory['path_init_flow'], self.model.path_init_flow[0,...,0]], axis=0)
-
-
+        print(self.memory['paths_true'].shape)
+        print(self.memory['paths_embedded'].shape)
+        print(self.memory['paths_reward'].shape)
+        print(self.memory['path_init_flow'].shape)
 
 class fn_alpha_tune_grid(tf.keras.callbacks.Callback):
     def __init__(self, epochs=10, alpha_range=None, N_SAMPLE=16, pool_size=1, seed=1234,**kwargs):
