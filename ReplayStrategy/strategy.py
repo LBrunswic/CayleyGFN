@@ -27,5 +27,5 @@ class best_reward:
         return memory['paths_true'][rank].reshape(shape), memory['paths_embedded'][rank].reshape(shape)
 
 strategies = {
-    'best_reward' : best_reward
+    'best_reward' : best_reward,
 }

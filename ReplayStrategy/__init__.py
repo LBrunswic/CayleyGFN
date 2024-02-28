@@ -1,1 +1,1 @@
-from strategy import stragegies
+from ReplayStrategy.strategy import strategies

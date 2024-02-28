@@ -8,6 +8,7 @@ from GFlowBase.losses import MeanABError,Apower, Bpower,cutoff_fns
 from GFlowBase.rewards import Reward
 from GFlowBase.regularization import reg_post_choices,reg_fn_gen_choices
 from TestingEnv import ReplayBuffer,FlowSizeStop,tuning_method,metrics,PandasRecord,MemoryUse#, LogProgress
+from ReplayStrategy import strategies
 import tensorflow as tf
 from datetime import datetime
 from time import time
@@ -107,6 +108,8 @@ def train_test_model(hparams,logger):
         shape=(hparams['epochs'], hparams['grad_batch_size'], hparams['batch_size'],1),
         axis=-2
     )
+    if 'path_strategy' in hparams:
+        hparams['path_strategy'] = strategies[hparams['path_strategy']]
 
     Replay = ReplayBuffer(
         epoch_per_train=hparams['epochs'],
