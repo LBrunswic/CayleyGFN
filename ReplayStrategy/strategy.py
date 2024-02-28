@@ -16,6 +16,9 @@ class best_reward:
         }
     def __call__(self, memory, shape):
 
+        print(np.sum(memory['paths_reward'], axis=1)+self.delta)
+        print((np.sum(memory['paths_reward'], axis=1)+self.delta).shape)
+
         rank = self.rng.choice(
             a=np.arange(memory['paths_true'].shape[0]),
             size=shape[1],
