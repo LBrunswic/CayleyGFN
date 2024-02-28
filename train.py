@@ -113,6 +113,7 @@ def train_test_model(hparams,logger):
         seeded_uniform=seeded_uniform,
         seeded_initial=seeded_initial,
         pool_size=hparams['pool_size'],
+        replay_strategy=hparams['path_strategy']
     )
     callback_hp_tune = tuning_method[hparams['tuning_method']](**hparams)
 

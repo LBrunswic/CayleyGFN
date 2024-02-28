@@ -328,11 +328,18 @@ class MultiGFlowCayleyLinear(tf.keras.Model):
         self.gen_path_model = tf.keras.Model(inputs=seeded_uniform_positions, outputs=outputs, name='Gen')
 
     @tf.function
-    def update_training_distribution(self, initial, seeded_uniform):
+    def generate_update_training_distribution(self, initial, seeded_uniform):
         print('RECOMPILE UPDATE',initial.shape)
         for j in tf.range(self.grad_batch_size):
             true_paths, embedded_paths = self.gen_path_model(
                 tf.concat([seeded_uniform[j], tf.cast(initial[j], 'float32')], axis=1))
             self.paths_true[j].assign(true_paths)
             self.paths[j].assign(embedded_paths)
+            self.update_training_distribution_gflow()
+
+    @tf.function
+    def update_training_distribution(self, true_paths, embedded_paths):
+        for j in tf.range(self.grad_batch_size):
+            self.paths_true[j].assign(true_paths[j])
+            self.paths[j].assign(embedded_paths[j])
             self.update_training_distribution_gflow()

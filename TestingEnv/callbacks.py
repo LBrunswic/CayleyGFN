@@ -33,6 +33,9 @@ class PandasRecord(tf.keras.callbacks.Callback):
             res.update({'episode': [episode] * self.nflow})
             loss_HP = self.loss.HP()
             res.update({key: [loss_HP[key]] * self.nflow for key in loss_HP})
+            if 'path_strategy' in self.hparams:
+                path_strategy = self.hparams['path_strategy'].HP()
+                res.update({key: [path_strategy[key]] * self.nflow for key in path_strategy})
 
             for key in self.hparams:
                 if isinstance(self.hparams[key],tuple):
@@ -54,15 +57,21 @@ class PandasRecord(tf.keras.callbacks.Callback):
         self.results = pandas.DataFrame(concat_dict_of_ndarray(self.results))
 
 class ReplayBuffer(tf.keras.callbacks.Callback):
-    def __init__(self, seeded_uniform=None,seeded_initial=None, pool_size=1,monitor="ReplayBuffer", folder='Knowledge',epoch_per_train=10):
+    def __init__(self, seeded_uniform=None,seeded_initial=None, pool_size=1, replay_strategy=None, monitor="ReplayBuffer", folder='Knowledge',epoch_per_train=10):
         super().__init__()
         self.folder = folder
         self.episode_memory = []
         self.epoch_per_train = epoch_per_train
         self.pool_size = pool_size
+        self.replay_strategy = replay_strategy
         self.seeded_uniform = tf.Variable(seeded_uniform,trainable=False)
         self.seeded_initial = tf.Variable(seeded_initial,trainable=False)
-
+        self.memory = {
+            'paths_true': None,
+            'paths_embedded': None,
+            'paths_reward': None,
+            'path_init_flow': None,
+        }
 
     def on_train_begin(self, logs=None):
         self.model.compile_update_training_distribution()
@@ -93,9 +102,22 @@ class ReplayBuffer(tf.keras.callbacks.Callback):
         initial = tf.broadcast_to(initial,(*initial.shape[:-1], self.pool_size))
         seeded_uniform = self.seeded_uniform[epoch%self.epoch_per_train]
         seeded_uniform = tf.broadcast_to(seeded_uniform, (*seeded_uniform.shape[:-1], self.pool_size))
-        self.model.update_training_distribution(initial, seeded_uniform)
+        self.model.generate_update_training_distribution(initial, seeded_uniform)
+        self.memorize()
+        if self.replay_strategy is not None:
+            self.model.update_training_distribution(*self.replay_strategy(self.memory, shape=self.model.paths_true.shape))
 
-
+    def memorize(self):
+        if self.memory['paths_true'] is None:
+            self.memory['paths_true'] = self.model.self.paths_true.numpy()
+            self.memory['paths_embedded'] = self.model.self.paths.numpy()
+            self.memory['paths_reward'] = self.model.self.paths_reward.numpy()
+            self.memory['path_init_flow'] = self.model.self.path_init_flow.numpy()
+        else:
+            self.memory['paths_true'] = tf.concat([self.memory['paths_true'], self.model.self.paths_true[0,...,0]], axis=0)
+            self.memory['paths_embedded'] = tf.concat([self.memory['paths_embedded'], self.model.self.paths[0,...,0]], axis=0)
+            self.memory['paths_reward'] = tf.concat([self.memory['paths_reward'], self.model.self.paths_reward[0,...,0]], axis=0)
+            self.memory['path_init_flow'] = tf.concat([self.memory['path_init_flow'], self.model.self.path_init_flow[0,...,0]], axis=0)
 
 
 
