@@ -105,7 +105,7 @@ class ReplayBuffer(tf.keras.callbacks.Callback):
         self.model.generate_update_training_distribution(initial, seeded_uniform)
         self.memorize()
         if self.replay_strategy is not None:
-            self.model.update_training_distribution(*self.replay_strategy(self.memory, shape=self.model.paths_true.shape))
+            self.model.update_training_distribution(*self.replay_strategy(self.memory, self.model.paths_true.shape))
 
     def memorize(self):
         if self.memory['paths_true'] is None:
