@@ -29,6 +29,12 @@ parser.add_argument(
     default=0,
     help='Not implemented yet'
 )
+parser.add_argument(
+    '--save',
+    type=str,
+    default='test.csv',
+    help='Not implemented yet'
+)
 
 args = parser.parse_args().__dict__
 
@@ -70,7 +76,7 @@ T = time()
 result, returns, flow = train_test_model(experiments_hparams, logger)
 data_save = os.path.join(
     'RESULTS',
-    hash+'.csv'
+    args['save']
 )
 result.to_csv(data_save)
 dt = (time()-T)/3600

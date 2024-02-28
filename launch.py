@@ -63,7 +63,7 @@ for hp_file_name in os.listdir(FOLDER):
         print(f'Launching {hp_file_path} -> {data_save}...')
         if args['test'] == 0:
             T = time()
-            os.system(f"python3 docker_main.py --gpu={args['gpu']} --pool_size={args['pool_size']} --hp_file={hp_file_path}")
+            os.system(f"python3 docker_main.py --gpu={args['gpu']} --pool_size={args['pool_size']} --hp_file={hp_file_path} --save={data_save}")
             print(f'Done in {time()-T}')
         print('done!')
     else:
