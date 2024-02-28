@@ -91,11 +91,6 @@ class ReplayBuffer(tf.keras.callbacks.Callback):
         self.update_training_distribution_callback(epoch)
         self.model.update_flow_init(schedule(epoch))
 
-    def evaluate(self):
-        for epoch in range(self.epoch_per_train):
-            self.update_training_distribution_callback(epoch)
-            self.model.evaluate()
-
 
     def update_training_distribution_callback(self,epoch):
         initial = self.seeded_initial[epoch%self.epoch_per_train]
