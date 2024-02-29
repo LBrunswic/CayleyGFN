@@ -57,21 +57,17 @@ class PandasRecord(tf.keras.callbacks.Callback):
         self.results = pandas.DataFrame(concat_dict_of_ndarray(self.results))
 
 class ReplayBuffer(tf.keras.callbacks.Callback):
-    def __init__(self, seeded_uniform=None,seeded_initial=None, pool_size=1, replay_strategy=None, monitor="ReplayBuffer", folder='Knowledge',epoch_per_train=10):
+    def __init__(self, seeded_uniform=None,seeded_initial=None, pool_size=1, path_strategy=None,batch_size=64, monitor="ReplayBuffer", folder='Knowledge',epochs=10):
         super().__init__()
         self.folder = folder
         self.episode_memory = []
-        self.epoch_per_train = epoch_per_train
+        self.epoch_per_train = epochs
         self.pool_size = pool_size
-        self.replay_strategy = replay_strategy
+        self.replay_strategy = path_strategy
         self.seeded_uniform = tf.Variable(seeded_uniform,trainable=False)
         self.seeded_initial = tf.Variable(seeded_initial,trainable=False)
-        self.memory = {
-            'paths_true': None,
-            'paths_embedded': None,
-            'paths_reward': None,
-            'path_init_flow': None,
-        }
+        self.memory = None
+        self.batch_size = batch_size
 
     def on_train_begin(self, logs=None):
         self.model.compile_update_training_distribution()
@@ -80,7 +76,7 @@ class ReplayBuffer(tf.keras.callbacks.Callback):
     # def on_epoch_end(self, epoch, logs=None):
     #     print('ReplayBuffer', self.model.evaluate()['EMaxSeenRew'])
     def on_epoch_begin(self, epoch, logs=None):
-
+        print('epoch', epoch)
         def schedule(epoch):
             if epoch%self.epoch_per_train <= 1:
                 return (0., 1.)
@@ -93,29 +89,40 @@ class ReplayBuffer(tf.keras.callbacks.Callback):
 
 
     def update_training_distribution_callback(self,epoch):
+
         initial = self.seeded_initial[epoch%self.epoch_per_train]
         initial = tf.broadcast_to(initial,(*initial.shape[:-1], self.pool_size))
         seeded_uniform = self.seeded_uniform[epoch%self.epoch_per_train]
         seeded_uniform = tf.broadcast_to(seeded_uniform, (*seeded_uniform.shape[:-1], self.pool_size))
         self.model.generate_update_training_distribution(initial, seeded_uniform)
         T = time()
-        self.memorize()
+        if epoch% self.epoch_per_train == 0:
+            self.memory=None
+        self.memorize(epoch)
         print('ReplayBuffer:Memorize', time() - T)
         T = time()
         if self.replay_strategy is not None and self.replay_strategy.name != 'baseline':
-            self.model.update_training_distribution(*self.replay_strategy(self.memory, self.model.paths_true.shape))
+            self.model.update_training_distribution(*self.replay_strategy(self.memory, self.model.paths_true.shape, epoch,self.batch_size))
         print('ReplayBuffer:Strategy', time() - T)
-    def memorize(self):
-        if self.memory['paths_true'] is None:
-            self.memory['paths_true'] = self.model.paths_true[0,...,0].numpy()
-            self.memory['paths_embedded'] = self.model.paths[0,...,0].numpy()
-            self.memory['paths_reward'] = self.model.paths_reward[...,0].numpy()
-            self.memory['path_init_flow'] = self.model.path_init_flow[...,0].numpy()
+    def memorize(self,epoch):
+        if self.memory is None:
+            paths_true = np.concatenate([self.model.paths_true[0, ..., 0].numpy()]*self.epoch_per_train)
+            paths_embedded = np.concatenate([self.model.paths[0, ..., 0].numpy()]*self.epoch_per_train)
+            paths_reward = np.concatenate([self.model.paths_reward[..., 0].numpy()]*self.epoch_per_train)
+            path_init_flow = np.concatenate([self.model.path_init_flow[..., 0].numpy()]*self.epoch_per_train)
+            self.memory = {
+                'paths_true': paths_true,
+                'paths_embedded': paths_embedded,
+                'paths_reward': paths_reward,
+                'path_init_flow': path_init_flow
+            }
         else:
-            self.memory['paths_true'] = np.concatenate([self.memory['paths_true'], self.model.paths_true[0,...,0].numpy()], axis=0)
-            self.memory['paths_embedded'] = np.concatenate([self.memory['paths_embedded'], self.model.paths[0,...,0].numpy()], axis=0)
-            self.memory['paths_reward'] = np.concatenate([self.memory['paths_reward'], self.model.paths_reward[...,0].numpy()], axis=0)
-            self.memory['path_init_flow'] = np.concatenate([self.memory['path_init_flow'], self.model.path_init_flow[...,0].numpy()], axis=0)
+            self.memory['paths_true'][(epoch-1)*self.batch_size:epoch*self.batch_size] = self.model.paths_true[0, ..., 0].numpy()
+            self.memory['paths_embedded'][(epoch-1)*self.batch_size:epoch*self.batch_size] = self.model.paths[0, ..., 0].numpy()
+            self.memory['paths_reward'][(epoch-1)*self.batch_size:epoch*self.batch_size] = self.model.paths_reward[..., 0].numpy()
+            self.memory['path_init_flow'][(epoch-1)*self.batch_size:epoch*self.batch_size] = self.model.path_init_flow[..., 0].numpy()
+
+
 class fn_alpha_tune_grid(tf.keras.callbacks.Callback):
     def __init__(self, epochs=10, alpha_range=None, N_SAMPLE=16, pool_size=1, seed=1234,**kwargs):
         super(fn_alpha_tune_grid).__init__()
