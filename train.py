@@ -113,7 +113,7 @@ def train_test_model(hparams,logger):
 
 
 
-    Replay = ReplayBuffer(**hparams)
+    Replay = ReplayBuffer(seeded_uniform=seeded_uniform,seeded_initial=seeded_initial,**hparams)
     callback_hp_tune = tuning_method[hparams['tuning_method']](**hparams)
 
     hparams.update({'bench_n_batch' : hparams['bench_batch_size'] // hparams['batch_size']})
