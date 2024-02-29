@@ -17,10 +17,10 @@ class best_reward:
     def __call__(self, memory, shape,epoch,batch_size):
         assert(isinstance(memory['paths_true'],np.ndarray))
 
-        p=np.sum(memory['paths_reward'][:batch_size*epoch], axis=1)+self.delta
+        p=np.sum(memory['paths_reward'][:batch_size*(epoch+1)], axis=1)+self.delta
         p = p / np.sum(p)
         rank = self.rng.choice(
-            a=np.arange(batch_size*epoch,dtype='uint32'),
+            a=np.arange(batch_size*(epoch+1),dtype='uint32'),
             size=batch_size,
             replace=False,
             p=p

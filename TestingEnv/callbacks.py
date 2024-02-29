@@ -117,10 +117,10 @@ class ReplayBuffer(tf.keras.callbacks.Callback):
                 'path_init_flow': path_init_flow
             }
         else:
-            self.memory['paths_true'][(epoch-1)*self.batch_size:epoch*self.batch_size] = self.model.paths_true[0, ..., 0].numpy()
-            self.memory['paths_embedded'][(epoch-1)*self.batch_size:epoch*self.batch_size] = self.model.paths[0, ..., 0].numpy()
-            self.memory['paths_reward'][(epoch-1)*self.batch_size:epoch*self.batch_size] = self.model.paths_reward[..., 0].numpy()
-            self.memory['path_init_flow'][(epoch-1)*self.batch_size:epoch*self.batch_size] = self.model.path_init_flow[..., 0].numpy()
+            self.memory['paths_true'][epoch*self.batch_size:(epoch+1)*self.batch_size] = self.model.paths_true[0, ..., 0].numpy()
+            self.memory['paths_embedded'][epoch*self.batch_size:(epoch+1)*self.batch_size] = self.model.paths[0, ..., 0].numpy()
+            self.memory['paths_reward'][epoch*self.batch_size:(epoch+1)*self.batch_size] = self.model.paths_reward[..., 0].numpy()
+            self.memory['path_init_flow'][epoch*self.batch_size:(epoch+1)*self.batch_size] = self.model.path_init_flow[..., 0].numpy()
 
 
 class fn_alpha_tune_grid(tf.keras.callbacks.Callback):
