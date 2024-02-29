@@ -1,5 +1,5 @@
 import numpy as np
-
+from time import time
 
 class best_reward:
     def __init__(self,seed=1234,delta=0.01):
@@ -16,6 +16,7 @@ class best_reward:
         }
     def __call__(self, memory, shape):
         assert(isinstance(memory['paths_true'],np.ndarray))
+
         p=np.sum(memory['paths_reward'], axis=1)+self.delta
         p = p / np.sum(p)
         rank = self.rng.choice(
@@ -27,6 +28,7 @@ class best_reward:
 
         s_true = memory['paths_true'][rank].shape
         s_embedded = memory['paths_embedded'][rank].shape
+        print('best_reward', time() - T)
         return memory['paths_true'][rank].reshape((1,*s_true,1)), memory['paths_embedded'][rank].reshape((1,*s_embedded,1))
 
 class baseline:

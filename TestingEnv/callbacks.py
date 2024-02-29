@@ -98,10 +98,13 @@ class ReplayBuffer(tf.keras.callbacks.Callback):
         seeded_uniform = self.seeded_uniform[epoch%self.epoch_per_train]
         seeded_uniform = tf.broadcast_to(seeded_uniform, (*seeded_uniform.shape[:-1], self.pool_size))
         self.model.generate_update_training_distribution(initial, seeded_uniform)
+        T = time()
         self.memorize()
+        print('ReplayBuffer:Memorize', time() - T)
+        T = time()
         if self.replay_strategy is not None and self.replay_strategy.name != 'baseline':
             self.model.update_training_distribution(*self.replay_strategy(self.memory, self.model.paths_true.shape))
-
+        print('ReplayBuffer:Strategy', time() - T)
     def memorize(self):
         if self.memory['paths_true'] is None:
             self.memory['paths_true'] = self.model.paths_true[0,...,0].numpy()
@@ -113,11 +116,6 @@ class ReplayBuffer(tf.keras.callbacks.Callback):
             self.memory['paths_embedded'] = np.concatenate([self.memory['paths_embedded'], self.model.paths[0,...,0].numpy()], axis=0)
             self.memory['paths_reward'] = np.concatenate([self.memory['paths_reward'], self.model.paths_reward[...,0].numpy()], axis=0)
             self.memory['path_init_flow'] = np.concatenate([self.memory['path_init_flow'], self.model.path_init_flow[...,0].numpy()], axis=0)
-        print(self.memory['paths_true'].shape)
-        print(self.memory['paths_embedded'].shape)
-        print(self.memory['paths_reward'].shape)
-        print(self.memory['path_init_flow'].shape)
-
 class fn_alpha_tune_grid(tf.keras.callbacks.Callback):
     def __init__(self, epochs=10, alpha_range=None, N_SAMPLE=16, pool_size=1, seed=1234,**kwargs):
         super(fn_alpha_tune_grid).__init__()
