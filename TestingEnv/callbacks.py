@@ -96,16 +96,14 @@ class ReplayBuffer(tf.keras.callbacks.Callback):
         seeded_uniform = tf.broadcast_to(seeded_uniform, (*seeded_uniform.shape[:-1], self.pool_size))
         self.model.generate_update_training_distribution(initial, seeded_uniform)
         T = time()
-        if epoch% self.epoch_per_train == 0:
-            self.memory=None
-        self.memorize(epoch)
+        self.memorize(epoch%self.epoch_per_train)
         # print('ReplayBuffer:Memorize', time() - T)
         T = time()
         if self.replay_strategy is not None and self.replay_strategy.name != 'baseline':
             self.model.update_training_distribution(*self.replay_strategy(self.memory, self.model.paths_true.shape, epoch%self.epoch_per_train, self.batch_size))
         # print('ReplayBuffer:Strategy', time() - T)
     def memorize(self,epoch):
-        if self.memory is None:
+        if self.memory is None or epoch==0:
             paths_true = np.concatenate([self.model.paths_true[0, ..., 0].numpy()]*self.epoch_per_train)
             paths_embedded = np.concatenate([self.model.paths[0, ..., 0].numpy()]*self.epoch_per_train)
             paths_reward = np.concatenate([self.model.paths_reward[..., 0].numpy()]*self.epoch_per_train)
