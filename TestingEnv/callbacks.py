@@ -57,7 +57,7 @@ class PandasRecord(tf.keras.callbacks.Callback):
         self.results = pandas.DataFrame(concat_dict_of_ndarray(self.results))
 
 class ReplayBuffer(tf.keras.callbacks.Callback):
-    def __init__(self, seeded_uniform=None,seeded_initial=None, pool_size=1, path_strategy=None,batch_size=64, monitor="ReplayBuffer", folder='Knowledge',epochs=10):
+    def __init__(self, seeded_uniform=None,seeded_initial=None, pool_size=1, path_strategy=None,batch_size=64, monitor="ReplayBuffer", folder='Knowledge',epochs=10,**kwargs):
         super().__init__()
         self.folder = folder
         self.episode_memory = []
