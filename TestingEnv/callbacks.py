@@ -102,7 +102,7 @@ class ReplayBuffer(tf.keras.callbacks.Callback):
         # print('ReplayBuffer:Memorize', time() - T)
         T = time()
         if self.replay_strategy is not None and self.replay_strategy.name != 'baseline':
-            self.model.update_training_distribution(*self.replay_strategy(self.memory, self.model.paths_true.shape, epoch,self.batch_size))
+            self.model.update_training_distribution(*self.replay_strategy(self.memory, self.model.paths_true.shape, epoch%self.epoch_per_train, self.batch_size))
         # print('ReplayBuffer:Strategy', time() - T)
     def memorize(self,epoch):
         if self.memory is None:
